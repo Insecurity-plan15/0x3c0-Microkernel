@@ -1,0 +1,31 @@
+# Don't want any text files, or documentation. Just code
+*.txt
+/Designs/
+/IsoSource/
+
+# There's no point uploading shortcuts
+*.lnk
+
+# Keep the gitignore file, so that people know what's missing
+!.gitignore
+
+# No need for the Bochs options
+bochsOptions.bxrc
+
+# Pointless uploading the makefile
+Makefile
+
+# Ignore object files
+*.o
+
+# Ignore the basic stuff, like the project, execution batch file and end result
+*.elf
+*.cbp
+*.cbp.backup
+*.layout
+*.workspace
+*.bat
+*.depend
+
+# Ignore all libraries
+/Libraries/

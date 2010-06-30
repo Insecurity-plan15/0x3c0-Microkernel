@@ -1,0 +1,11 @@
+This is mostly a file to stop GitHub from pestering me.
+
+My operating system doesn't really have a purpose. IPC is still only basic, some system calls are still stubbed, and the only program it loads is a bootstrap. But it's my operating system, and I like how it's turning out - as a learning experience, and a way for me to learn about the internals of a computer.
+
+To compile my operating system, you'll need G++ 4.3.0 - other versions may work, but I haven't tested them.
+
+My operating system doesn't actually do anything visible for the moment, so it shouldn't do anything to your hard drive. Nevertheless, use at your own risk.
+
+Finally, some legal stuff. Feel free to use any of my code for learning purposes; if you directly copy any of my files, credit me in some way, including the link to the repository. There is one exception to this rule; do not copy my code in any project bound by a license more restrictive than the BSD license, unless I have given my written permission. I retain the right to alter the terms of this legal agreement at any time; these alterations cannot be retroactive.
+
+If you want to discuss the licensing rules, or have any suggestions, feel free to send me a message (or however GitHub lets users communicate.) Spam and flames are not welcome, and will be summarily ignored.
