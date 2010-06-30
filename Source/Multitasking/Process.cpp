@@ -12,14 +12,12 @@ Process::Process(MemoryManagement::x86::PageDirectory pd, Receipt messageMethod,
 {
 	pageDir = pd;
 	threads = new LinkedList<Thread *>();
-	allocator = new MemoryManagement::Heap(UserHeapStart, UserHeapEnd, false, 0, pd);
+	allocator = new MemoryManagement::Heap(UserHeapStart, UserHeapEnd, false, pd);
 	priority = DefaultProcessPriority;
 	//Set up the security privileges
 	securityPrivileges = new Bitmap(SecurityPrivilegeCount);
 	sharedPages = new List<SharedPage *>();
 	state = ProcessState::Running;
-	//Give the fledgling process a default memory map
-	memoryMap = MemoryMap::GetDefaultMap()->Clone();	//GetDefaultMap will never be null
 	//The ELF object is uninitialised
 	//When a message is received, a popup thread will be created, starting in a copy of this method. It will have its own stack
 	onReceipt = messageMethod;
@@ -30,8 +28,6 @@ Process::Process(MemoryManagement::x86::PageDirectory pd, Receipt messageMethod,
 	for(unsigned int i = 0; i < sizeof(SecurityPrivilege::DefaultPrivileges) / sizeof(unsigned int); i++)
 		securityPrivileges->SetBit(SecurityPrivilege::DefaultPrivileges[i]);
 
-	//This is hard-coded. The number 1 is the index of the item pointing to the user-space heap entry
-	allocator->SetMemoryZone(memoryMap->GetItem(1));
 	currentThread = new LinkedListNode<Thread *>(0);
 
 	if(onReceipt != 0)
@@ -124,11 +120,6 @@ unsigned int Process::GetState()
 void Process::SetState(unsigned int st)
 {
 	state = st;
-}
-
-MemoryMap *Process::GetMemoryMap()
-{
-	return memoryMap;
 }
 
 ELF::ELFObject *Process::GetELFObject()

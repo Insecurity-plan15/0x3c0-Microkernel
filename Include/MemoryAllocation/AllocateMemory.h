@@ -71,7 +71,6 @@ namespace MemoryManagement
 		unsigned int heapStart;
 		unsigned int heapEnd;
 		unsigned int heapMax;
-		MemoryZone *zone;
 		MemoryManagement::x86::PageDirectory pageDirectory;
 
 		void *liballoc_memset(void *s, int c, size_t n);
@@ -83,17 +82,13 @@ namespace MemoryManagement
 
 		HeapDataStructures::liballoc_major *allocate_new_page(unsigned int size);
 	public:
-		Heap(unsigned int start, unsigned int max, bool kernelMode, MemoryZone *mz, MemoryManagement::x86::PageDirectory pd);
+		Heap(unsigned int start, unsigned int max, bool kernelMode, MemoryManagement::x86::PageDirectory pd);
 		~Heap();
 
 		void *Allocate(size_t req_sz);
 		void *CleanAllocate(size_t nobj, size_t size);
 		void *Reallocate(void *p, size_t size);
 		void Free(void *ptr);
-
-		void SetMemoryZone(MemoryZone *mz);
-		MemoryZone *GetMemoryZone();
-
 		long long GetAllocatedMemory();
 
 		MemoryManagement::x86::PageDirectory GetPageDirectory();

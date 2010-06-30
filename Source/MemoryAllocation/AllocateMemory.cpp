@@ -151,8 +151,6 @@ void *Heap::liballoc_alloc(size_t pages)
 		//...and map them in
 		Virtual::MapMemory((unsigned int)p, heapEnd, mappingFlags);
 	}
-	if(zone != 0)
-		zone->End = heapEnd;
 	//Return a pointer to the start of the allocated block
 	return (void *)formerHeapEnd;
 }
@@ -171,8 +169,6 @@ int Heap::liballoc_free(void *p, size_t pages)
 	}
 	if((unsigned int)p + pages * PageSize == heapEnd)
 		heapEnd -= (pages * PageSize);
-	if(zone != 0)
-		zone->End = heapEnd;
 	return 0;
 }
 
@@ -213,13 +209,12 @@ liballoc_major *Heap::allocate_new_page(unsigned int size)
       return maj;
 }
 
-Heap::Heap(unsigned int start, unsigned int max, bool kernelMode, MemoryZone *mz, MemoryManagement::x86::PageDirectory pd)
+Heap::Heap(unsigned int start, unsigned int max, bool kernelMode, MemoryManagement::x86::PageDirectory pd)
 {
 	heapStart = heapEnd = start;
 	heapMax = max;
 	mappingFlags = x86::PageDirectoryFlags::Present | x86::PageDirectoryFlags::ReadWrite |
 		(kernelMode ? 0 : x86::PageDirectoryFlags::UserAccessible);
-	zone = mz;
 	pageDirectory = pd;
 
 	l_memRoot = l_bestBet = 0;
@@ -694,16 +689,6 @@ void Heap::Free(void *ptr)
 	liballoc_unlock();		// release the lock
 }
 
-void Heap::SetMemoryZone(MemoryZone *mz)
-{
-	zone = mz;
-}
-
-MemoryZone *Heap::GetMemoryZone()
-{
-	return zone;
-}
-
 long long Heap::GetAllocatedMemory()
 {
 	return l_inuse;
@@ -719,7 +704,7 @@ Heap *Heap::GetKernelHeap()
 	extern unsigned int kernelHeapStart;
 
 	if(kernelHeap == 0)
-		kernelHeap = new((unsigned int)&kernelHeapStart) Heap(KernelHeapStart, KernelHeapEnd, true, 0,
-			MemoryManagement::Virtual::GetPageDirectory());
+		kernelHeap = new((unsigned int)&kernelHeapStart) Heap(KernelHeapStart, KernelHeapEnd, true,
+            MemoryManagement::Virtual::GetPageDirectory());
 	return kernelHeap;
 }

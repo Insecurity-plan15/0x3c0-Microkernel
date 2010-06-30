@@ -23,10 +23,6 @@ void Main(unsigned int stack, MultibootInfo *multiboot)
 	MemoryManagement::Physical::PageAllocator::Initialise(multiboot);
 	//Set up the infrastructure used for paging
 	MemoryManagement::Virtual::Initialise();
-	//Link the kernel heap's memory zone (which is updated on page allocations) to the kernel heap
-	MemoryManagement::Heap::GetKernelHeap()
-		->SetMemoryZone(MemoryMap::GetDefaultMap()
-			->GetItem(3));
 //From this point onwards, heap allocations will work
 	//Make the kernel's interrupt management system completely operational...
 	Interrupts::Install();

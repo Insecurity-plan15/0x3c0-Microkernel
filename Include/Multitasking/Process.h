@@ -51,7 +51,6 @@ private:
 	Bitmap *securityPrivileges;
 	List<SharedPage *> *sharedPages;
 	unsigned int state;	//This can take one of the values in the ProcessState namespace
-	MemoryMap *memoryMap;
 	ELF::ELFObject *elfObject;
 	Receipt onReceipt;
 	Drivers::DriverInfoBlock *driver;
@@ -82,8 +81,6 @@ public:
 
 	unsigned int GetState();	//If bit 0 is set, the process is IO bound and effectively needs to have a halved priority
 	void SetState(unsigned int st);
-
-	MemoryMap *GetMemoryMap();	//Contains a layout of all memory according to the process
 
 	ELF::ELFObject *GetELFObject();	//Used for dynamic linking
 	void SetELFObject(ELF::ELFObject *elf);
