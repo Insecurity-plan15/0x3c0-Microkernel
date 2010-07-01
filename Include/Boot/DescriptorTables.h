@@ -99,11 +99,13 @@ private:
 	#define ISREntry(n)	setIDTGate(n, (unsigned int)ISR##n, 0x8, 0x8E)
 	#define IRQEntry(n) setIDTGate(n+32, (unsigned int)IRQ##n, 0x8, 0x8E)
 	static void installIDT();
-	static void installTSS(unsigned int cpuID, unsigned int esp0);
+	//If newCPU is true, cpuID is ignored and a new TSS is created at the end of the GDT
+	static void installTSS(unsigned int cpuID, unsigned int esp0, bool newCPU = false);
 	static void setIDTGate(unsigned char i, unsigned int function, unsigned short selector, unsigned char flags);
 public:
 	static void Install();
 	static void InstallTSS(unsigned int esp0, unsigned int cpuID);
+	static void AddTSS(unsigned int esp0);
 };
 
 #endif

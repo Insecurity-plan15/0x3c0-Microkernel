@@ -172,7 +172,7 @@ void DescriptorTables::installIDT()
 }
 
 //By this point, I expect physical and virtual memory management to be set up. Heap allocations are therefore no problem
-void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0)
+void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0, bool installTSS)
 {
 	//This formula is simply the inverse of the one set in installGDT, adjusted to show the highest index, not the number of entries
 	unsigned int highestIndex = ((gdtPointer.Limit + 1) / sizeof(x86::GDTEntry)) - 1;
@@ -183,6 +183,8 @@ void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0)
 	//I add five because I need to know how many elements there are in the GDT, not just TSSes
 	unsigned int tssIndex = cpuID + 5;
 
+    if(installTSS)
+        tssIndex = highestIndex + 1;
 	if(tssIndex > highestIndex)
 	{
 		//This is the first time I'm reallocating the GDT. A standard realloc won't work
@@ -258,4 +260,13 @@ void DescriptorTables::Install()
 void DescriptorTables::InstallTSS(unsigned int esp0, unsigned int cpuID)
 {
 	installTSS(cpuID, esp0);
+}
+
+/*
+* No circular dependancy here, regardless of how it looks. I call AddTSS with esp0 = 0, then the Scheduler class' SetupStack method
+* (which internally calls installTSS, passing the current TSS identifier and the new esp0).
+*/
+void DescriptorTables::AddTSS(unsigned int esp0)
+{
+    installTSS(0, esp0, true);
 }
