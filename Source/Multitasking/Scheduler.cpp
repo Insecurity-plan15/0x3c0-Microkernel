@@ -28,14 +28,22 @@ unsigned int Scheduler::getCPUIdentifier()
 
 void Scheduler::SetupStack()
 {
-	void *page = MemoryManagement::Physical::PageAllocator::AllocatePage(false);
+	void *page = 0;
+	unsigned int id = getCPUIdentifier();
+	unsigned int stackLocation = 0xF0400000 + (PageSize * id);
+	unsigned int mappingFlags = 0;
 
-	MemoryManagement::Virtual::MapMemory((unsigned int)page, 0xF0400000, MemoryManagement::x86::PageDirectoryFlags::ReadWrite);
-	page = MemoryManagement::Physical::PageAllocator::AllocatePage(false);
-	MemoryManagement::Virtual::MapMemory((unsigned int)page, 0xF0400000 + PageSize, MemoryManagement::x86::PageDirectoryFlags::ReadWrite);
+    //Make certain that the stack isn't already mapped
+    MemoryManagement::Virtual::RetrieveMapping((void *)stackLocation, &mappingFlags);
+
+    //If it's present, I've already called SetupStack for this logical core, and don't need to do anything
+    if((mappingFlags & MemoryManagement::x86::PageDirectoryFlags::Present) != 0)
+        return;
+    page = MemoryManagement::Physical::PageAllocator::AllocatePage(false);
+	MemoryManagement::Virtual::MapMemory((unsigned int)page, stackLocation, MemoryManagement::x86::PageDirectoryFlags::ReadWrite);
 	//Adding PageSize will push the stack into the next page. That isn't mapped.
-	//I can't subtract one because the stack needs to be aligned on a DWORD boundary
-	setKernelStack(0xF0400000 + PageSize - 4);
+	//I subtract four because the stack needs to be aligned on a DWORD boundary
+	setKernelStack(stackLocation - 4);
 }
 
 Scheduler::Scheduler(Process *first)

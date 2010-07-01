@@ -1,13 +1,10 @@
-#include <Boot/DescriptorTables.h>
 #include <Boot/Multiboot.h>
-#include <Multitasking/Paging.h>
+#include <Boot/DescriptorTables.h>
 #include <MemoryAllocation/Physical.h>
-#include <Common/CPlusPlus.h>
+#include <Multitasking/Paging.h>
 #include <Multitasking/Scheduler.h>
 #include <Multitasking/SystemCalls.h>
 #include <ELF/ELFLoader.h>
-
-#include <MemoryAllocation/AllocateMemory.h>
 
 extern "C" void Main(unsigned int, MultibootInfo *);
 
@@ -35,7 +32,8 @@ void Main(unsigned int stack, MultibootInfo *multiboot)
 	for(unsigned int i = 0; i < multiboot->ModuleCount; i++)
 	{
 		Module *mod = &multiboot->Modules[i];
-		unsigned int properStart = mod->Start + 0xF0000000;
+		//The first 4 MiB is mapped to the last 0xF0000000 bytes of memory
+		unsigned int properStart = mod->Start < 0x400000 ? mod->Start + 0xF0000000 : mod->Start;
 		Process *elfProcess = 0;
 		ELF::ELFLoader *loader = 0;
 
