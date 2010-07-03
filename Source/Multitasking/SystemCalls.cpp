@@ -90,15 +90,10 @@ SystemCallDefinition(CreateProcess)
 	unsigned int valid = 0;
 	UserLevelStructures::MemoryBlock *blocks = (UserLevelStructures::MemoryBlock *)eax;
 	unsigned int elementCount = ebx;
-	StackStates::x86Stack *newStack = (StackStates::x86Stack *)ecx;
 	MemoryManagement::x86::PageDirectory newPageDir = 0;
 	Process *p = 0;
 	Thread *th = 0;
 
-	//Make sure that the new stack state is valid
-	valid = isAddressValid(ecx, true);
-	if(valid != 0)
-		return valid;
 	if(! sched->GetCurrentProcess()->GetSecurityPrivileges()->TestBit(SecurityPrivilege::CreateProcess))
 		return 3;
 	//Check that the elements in the list are valid
@@ -138,27 +133,9 @@ SystemCallDefinition(CreateProcess)
 		MemoryManagement::Virtual::CopyToAddressSpace(currentBlock->Start, currentBlock->Start - currentBlock->End, currentBlock->CopyTo,
 			false, true);
 	}
-	//For fork() support, I think that I'll need to do some more special stuff here.
-	//Ordinarily, I drop into the start of a method. fork() requires more than that - a different stack state
-	th = new Thread((ThreadStart)newStack->EIP, p);
-	//A zeroed ESP means that the application is just providing EIP and the other general registers. The stack needs setting up
-	if(newStack->ESP != 0)
-	{
-		if((newStack->CS & 3) != 3)
-			return 6;
-		if((newStack->DS & 3) != 3)
-			return 7;
-		if((newStack->SS & 3) != 3)
-			return 8;
-		//All new processes must run in IOPL 0 and have interrupts enabled
-		if((newStack->EFLAGS & 0x200) != 0x200)
-			return 9;
-		//The process cannot run in IOPL 3
-		if((newStack->EFLAGS & 0x3000) == 0x3000)
-			return 10;
-		th->SetState(newStack);
-	}
-	//This is just a junk parameter. The stub won't do anything with it
+	//If ECX isn't valid, the process will page fault and be immediately killed
+	th = new Thread((ThreadStart)ecx, p);
+
 	th->Start((void *)0);
 
 	sched->AddProcess(p);
@@ -167,9 +144,9 @@ SystemCallDefinition(CreateProcess)
 
 SystemCallDefinition(KillProcess)
 {
-	Process *p = (Process *)eax;
-	unsigned int valid = isAddressValid(eax, false);
 	Scheduler *sched = Scheduler::GetScheduler();
+	Process *p = eax == 0 ? sched->GetCurrentProcess() : (Process *)eax;
+	unsigned int valid = isAddressValid(eax, false);
 
 	if(valid != 0)
 		return valid;
@@ -177,6 +154,7 @@ SystemCallDefinition(KillProcess)
 	for(LinkedListNode<Thread *> *nd = p->GetThreads()->First; nd != 0 && nd->Value != 0; nd = nd->Next)
 		delete nd->Value;
 	delete p;
+	sched->Yield(stack);
 	return 0;
 }
 
@@ -293,27 +271,30 @@ SystemCallDefinition(PerformPageManagement)
 	if(error != 1)
 		return 1;
 	//There's no way that an application or driver should be allowed to manipulate kernel addresses
-	if(ebx >= 0xF000000)
+	if(ebx >= 0xD000000)
 		return 2;
 	//If EBX is 1, then allocate a physical page and return its address in EBX
-	if(ebx == 1)
+	switch(ebx)
 	{
-		p = MemoryManagement::Physical::PageAllocator::AllocatePage(true);
-		if(p == 0)
-			return 3;
-		stack->EBX = (unsigned int)p;
-		return 0;
-	}
-	else if(ebx == 2)
-	{
-		unsigned int data[2];
+        case 1:
+        {
+            p = MemoryManagement::Physical::PageAllocator::AllocatePage(true);
+            if(p == 0)
+                return 3;
+            stack->EBX = (unsigned int)p;
+            return 0;
+        }
+        case 2:
+        {
+            unsigned int data[2];
 
-		data[0] = MemoryManagement::Virtual::RetrieveMapping((void *)eax, &data[1]);
-		if((data[1] & MemoryManagement::x86::PageDirectoryFlags::Present) == 0)
-			return 3;
-		MemoryManagement::Physical::PageAllocator::FreePage((void *)data[0]);
-		MemoryManagement::Virtual::EraseMapping((void *)eax);
-		return 0;
+            data[0] = MemoryManagement::Virtual::RetrieveMapping((void *)eax, &data[1]);
+            if((data[1] & MemoryManagement::x86::PageDirectoryFlags::Present) == 0)
+                return 3;
+            MemoryManagement::Physical::PageAllocator::FreePage((void *)data[0]);
+            MemoryManagement::Virtual::EraseMapping((void *)eax);
+            return 0;
+        }
 	}
 	//Allocate a page and map it in
 	p = MemoryManagement::Physical::PageAllocator::AllocatePage(false);
