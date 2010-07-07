@@ -136,7 +136,7 @@ SystemCallDefinition(CreateProcess)
 	//If ECX isn't valid, the process will page fault and be immediately killed
 	th = new Thread((ThreadStart)ecx, p);
 
-	th->Start((void **)0);
+	th->Start((void **){ 0 });
 
 	sched->AddProcess(p);
 	return 0;

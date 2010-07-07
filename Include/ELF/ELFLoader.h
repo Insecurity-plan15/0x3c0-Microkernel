@@ -9,11 +9,9 @@ namespace ELF
 	{
 	friend class Process;
 	public:
-		ELFLoader(void *base, unsigned int sz, char *defaultName);
+		ELFLoader(void *base, unsigned int sz);
 		~ELFLoader();
 		FileStructures::SectionHeader *GetSectionHeader(unsigned int idx);
-		FileStructures::ProgramHeader *GetProgramHeader(unsigned int idx);
-		unsigned int ResolveSymbol(unsigned int address);
 		void Start(void *parameter);
 		Process *GetProcess();
 		void SetProcess(Process *p);

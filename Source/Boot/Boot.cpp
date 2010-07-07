@@ -43,7 +43,7 @@ void Main(unsigned int stack, MultibootInfo *multiboot)
 
 		//The second parameter is 0 because it can't receive messages yet. A system call is available to allow message reception
 		elfProcess = new Process(pd, 0);
-		loader = new ELF::ELFLoader((void *)properStart, mod->End - mod->Start, mod->Name);
+		loader = new ELF::ELFLoader((void *)properStart, mod->End - mod->Start);
 		loader->SetProcess(elfProcess);
 		sch->AddProcess(elfProcess);
 		loader->Start((void *)0xABCDEF);

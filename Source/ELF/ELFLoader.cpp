@@ -8,12 +8,8 @@
 using namespace ELF;
 using namespace ELF::FileStructures;
 
-ELFLoader::ELFLoader(void *base, unsigned int sz, char *defaultName)
+ELFLoader::ELFLoader(void *base, unsigned int sz)
 {
-	char *sectionHeaderStringTable;
-	SectionHeader *sectionHeaderStringTableHeader;
-
-	buffer = (unsigned int *)base;
 	elfEnd = (unsigned int)base + sz;
 	valid = true;
 	header = (ELFHeader *)base;
@@ -33,57 +29,6 @@ ELFLoader::ELFLoader(void *base, unsigned int sz, char *defaultName)
 
 	if(valid == false)
 		return;
-	sectionHeaderStringTableHeader = GetSectionHeader(header->SectionHeaderStringTableIndex);
-	sectionHeaderStringTable = (char *)((unsigned int)header + sectionHeaderStringTableHeader->Offset);
-	for(unsigned int i = 0; i < header->ProgramHeaderCount; i++)
-	{
-		ProgramHeader *ph = GetProgramHeader(i);
-
-		if(ph != 0 && ph->Type == 2)
-			parseDynamicHeader(ph);
-	}
-	//Not every program has an element defining its name. Allow a default one to be selected
-	if(name == 0)
-		name = defaultName;
-	for(unsigned int i = 0; i < header->SectionHeaderCount; i++)
-	{
-		SectionHeader *sh = GetSectionHeader(i);
-		char *sectionName = &sectionHeaderStringTable[sh->Name];
-
-		if(sh->Size == 0)
-			continue;
-		switch(sh->Type)
-		{
-			//Every ELF file has a null section header. If this is it, then the information won't be right
-			case 0:
-				continue;
-			//If a file has a section header with type 2, then it's a symbol table
-			case 2:
-			{
-				if(Strings::Compare(sectionName, (char *)".symtab") == 0)
-				{
-					symbolTable = (Symbol *)((unsigned int)header + sh->Offset);
-					symbolTableSize = sh->Size;
-				}
-				break;
-			}
-			//A type 3 section header contains a string table
-			case 3:
-			{
-				if(Strings::Compare(sectionName, (char *)".strtab") == 0)
-				{
-					stringTable = (char *)((unsigned int)header + sh->Offset);
-					stringTableSize = sh->Size;
-				}
-				break;
-			}
-		}
-	}
-	if(hashTable != 0)
-	{
-		nBucket = *hashTable;
-		dynamicSymbolTableSize = nChain = *(hashTable + sizeof(int));
-	}
 }
 
 ELFLoader::~ELFLoader()
@@ -98,18 +43,6 @@ SectionHeader *ELFLoader::GetSectionHeader(unsigned int idx)
 	return (SectionHeader *)((unsigned int)header + header->SectionHeaderOffset + idx * header->SectionHeaderSize);
 }
 
-ProgramHeader *ELFLoader::GetProgramHeader(unsigned int idx)
-{
-	if(idx > header->ProgramHeaderCount)
-		return 0;
-	return (ProgramHeader *)((unsigned int)header + header->ProgramHeaderOffset + idx * header->ProgramHeaderSize);
-}
-
-unsigned int ELFLoader::ResolveSymbol(unsigned int address)
-{
-	return 0;
-}
-
 void ELFLoader::Start(void *parameter)
 {
 	unsigned int cr3 = MemoryManagement::Virtual::GetPageDirectory();
@@ -122,9 +55,8 @@ void ELFLoader::Start(void *parameter)
 	thread = new Thread((ThreadStart)header->EntryPoint, process);
 	//The first point of order is to switch address spaces, so the right process gets the data
 	MemoryManagement::Virtual::SwitchPageDirectory(process->GetPageDirectory());
-	params = new (process) void *[2];
+	params = new (process) void *[1];
 	params[0] = parameter;
-	params[1] = (void *)"Eddy";
 	for(unsigned int i = 0; i < header->SectionHeaderCount; i++)
 	{
 		SectionHeader *sh = GetSectionHeader(i);
@@ -193,7 +125,7 @@ void ELFLoader::Start(void *parameter)
 	}
 	//Finally, switch back to the original address space to revert to the previous state
 	MemoryManagement::Virtual::SwitchPageDirectory(cr3);
-	thread->Start(params, 2);
+	thread->Start(params);
 }
 
 Process *ELFLoader::GetProcess()
