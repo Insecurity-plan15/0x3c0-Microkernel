@@ -176,7 +176,7 @@ void Process::SendMessage(Message *message)
 	m->Code = message->GetCode();
 	m->Source = (unsigned int)message->GetSource();
 	//Start the new thread
-	th->Start(m);
+	th->Start((void **)&m);
 }
 
 void Process::BecomeDriver(Drivers::DriverInfoBlock *d)

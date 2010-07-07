@@ -1,5 +1,6 @@
 #include <ELF/ELFLoader.h>
 #include <Common/Strings.h>
+#include <Common/CPlusPlus.h>
 #include <Multitasking/Paging.h>
 #include <MemoryAllocation/Physical.h>
 #include <Memory.h>
@@ -113,6 +114,7 @@ void ELFLoader::Start(void *parameter)
 {
 	unsigned int cr3 = MemoryManagement::Virtual::GetPageDirectory();
 	Thread *thread;
+	void **params = 0;
 
 	//If there's no process to load it into, it doesn't matter
 	if(process == 0)
@@ -120,6 +122,9 @@ void ELFLoader::Start(void *parameter)
 	thread = new Thread((ThreadStart)header->EntryPoint, process);
 	//The first point of order is to switch address spaces, so the right process gets the data
 	MemoryManagement::Virtual::SwitchPageDirectory(process->GetPageDirectory());
+	params = new (process) void *[2];
+	params[0] = parameter;
+	params[1] = (void *)"Eddy";
 	for(unsigned int i = 0; i < header->SectionHeaderCount; i++)
 	{
 		SectionHeader *sh = GetSectionHeader(i);
@@ -188,7 +193,7 @@ void ELFLoader::Start(void *parameter)
 	}
 	//Finally, switch back to the original address space to revert to the previous state
 	MemoryManagement::Virtual::SwitchPageDirectory(cr3);
-	thread->Start(parameter);
+	thread->Start(params, 2);
 }
 
 Process *ELFLoader::GetProcess()

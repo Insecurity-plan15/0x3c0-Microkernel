@@ -10,14 +10,14 @@ struct DriverInfoBlock
 
 extern "C"
 {
-	void Main(int abc);
+	void Main(int abc, char *test);
 }
 
 void performCPUID();
 
 #define TimerFrequency	100
 
-void Main(int parameter)
+void Main(int parameter, char *test)
 {
 	DriverInfoBlock testDriver;
 	const char *name = "pitDriver";

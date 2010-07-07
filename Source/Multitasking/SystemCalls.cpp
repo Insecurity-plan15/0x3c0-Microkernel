@@ -47,7 +47,7 @@ SystemCallDefinition(CreateThread)
 		return 3;
 	thread = new Thread((ThreadStart)eax, sched->GetCurrentProcess());
 	//Get the current process from the current CPUs scheduler, and create a thread
-	thread->Start((void *)ebx);
+	thread->Start((void **)ebx);
 	sched->Wake(p);
 	return 0;
 }
@@ -136,7 +136,7 @@ SystemCallDefinition(CreateProcess)
 	//If ECX isn't valid, the process will page fault and be immediately killed
 	th = new Thread((ThreadStart)ecx, p);
 
-	th->Start((void *)0);
+	th->Start((void **)0);
 
 	sched->AddProcess(p);
 	return 0;

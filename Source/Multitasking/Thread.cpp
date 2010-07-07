@@ -17,7 +17,9 @@ void Thread::returnMethod()
 * One of these scenarios is the invocation of an IRET. After I enter ring 3, I set up a stack frame, then jump to the
 * thread's method
 */
-__attribute__((aligned(0x1000))) void Thread::ring3Start(StackStates::x86Stack *state, void *arg)
+
+//Hmm. Odd. I want to push a set of variables, not an array of them. How do I do this (variadic parameters?)
+__attribute__((aligned(0x1000))) void Thread::ring3Start(StackStates::x86Stack *state, ...)
 {
 	//This snippet has been lifted by JamesM's kernel development tutorials (with some adaptations)
 	//All copyright goes to him
@@ -103,7 +105,7 @@ Thread::~Thread()
 		delete[] (unsigned int *)(state->ESP - (0x1000 - 5 * 0x4));
 }
 
-void Thread::Start(void *args)
+void Thread::Start(void **args, unsigned int argCount)
 {
 	/*
 	* This is somewhat complex stack manipulation. Here's a diagram of what the stack should look like
@@ -119,7 +121,9 @@ void Thread::Start(void *args)
 	if(!customState)
 	{
 		//The first things to go on the stack are the arguments
-		*--stackState = (unsigned int)args;
+		//The below code is quite messy, but I don't know any better way to do it
+		for(unsigned int i = argCount; i > 0; i--)
+		    *--stackState = (unsigned int)(args[i - 1]);
 		if(! userModeActive)
 			*--stackState = (unsigned int)state;
 
