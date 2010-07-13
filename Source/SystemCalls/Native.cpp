@@ -1,6 +1,6 @@
 #include <Multitasking/Security.h>
 #include <MemoryAllocation/Physical.h>
-#include <Multitasking/SystemCalls.h>
+#include <SystemCalls/Native.h>
 #include <Multitasking/Process.h>
 #include <Multitasking/Thread.h>
 #include <Multitasking/Paging.h>
@@ -9,9 +9,7 @@
 #include <Drivers/DriverStructures.h>
 #include <Common/CPlusPlus.h>
 
-#define SystemCallDefinition(_name)	unsigned int Internal::_name(unsigned int eax, unsigned int ebx, unsigned int ecx, StackStates::Interrupt *stack)
-
-using namespace SystemCalls;
+using namespace SystemCalls::Native;
 
 unsigned int Internal::isAddressValid(unsigned int address, bool checkUserMode)
 {

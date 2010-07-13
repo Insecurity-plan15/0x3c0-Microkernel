@@ -54,7 +54,8 @@ x86::PageDirectory Virtual::GetKernelDirectory()
 }
 
 //This method clones a page directory. If I wanted fork() support, then I could use something apart from the kernel directory
-x86::PageDirectory Virtual::ClonePageDirectory(x86::PageDirectory dir)
+//In order to clone anything apart from the kernel allocations, usePosixSemantics must be set to true
+x86::PageDirectory Virtual::ClonePageDirectory(x86::PageDirectory dir, bool usePosixSemantics)
 {
 	/*
 	* First of all, I need to allocate 0x1000 bytes to act as a page directory
@@ -81,17 +82,38 @@ x86::PageDirectory Virtual::ClonePageDirectory(x86::PageDirectory dir)
 		for(unsigned int i = 0; i < 1024 - 1; i++)
 		{
 			//This relies on the fact that the temporary mappings I create are sequential in memory
-			if((i >= (0xFFBFC000 >> 22)) && (i <= (0xFFBFF000 >> 22)))
+			if((i >= (0xFFBFB000 >> 22)) && (i <= (0xFFBFF000 >> 22)))
 				continue;
 			if(i >= kernelBoundary)
 				pageDirectoryVirt[i] = cloneDirectory[i];
+            else if(usePosixSemantics && dir == current)
+            {
+                unsigned int address = 0;
+
+                if((cloneDirectory[i] & x86::PageDirectoryFlags::Present) == 0)
+                    continue;
+                //I have serious doubts about the suitability of fork(), but it's necessary for partial POSIX compliance
+                for(unsigned int j = 0; j < 1024; j++)
+                {
+                    unsigned int *tableAddress = (unsigned int *)(cloneDirectory[i] & PageMask);
+
+                    //Set up a short mapping, designed to check whether the page table entry is present.
+                    //If it isn't, I can save myself some time and ignore it
+                    MapMemory((unsigned int)tableAddress, 0xFFBFB000, x86::PageDirectoryFlags::ReadWrite);
+                        tableAddress = (unsigned int *)0xFFBFB000;
+                        if((tableAddress[j] & x86::PageDirectoryFlags::Present) == 0)
+                        {
+                            EraseMapping((void *)tableAddress);
+                            continue;
+                        }
+                    EraseMapping((void *)tableAddress);
+                    address = (i << 22) | (j << 12);
+                    //Do the actual copying, from the same position in memory across page directories
+                    CopyToAddressSpace(address, PageSize, address, pageDirectoryPhys, false, true);
+                }
+            }
 			if((i >= (KernelHeapStart >> 22)) && (i <= (KernelHeapEnd >> 22)))
 				pageDirectoryVirt[i] = cloneDirectory[i];
-			/*
-			* I could keep working on this if I wanted to clone the page tables which address the bottom 3 GiB.
-			* I don't really see the need. It's not going to do much for the process, as everything below 3 GiB shouldn't
-			* go into a new page directory anyway. If I wanted fork() support, then I could add the page table cloning
-			*/
 		}
 
 		//The last page directory entry points to the page directory itself

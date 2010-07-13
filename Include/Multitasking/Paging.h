@@ -35,6 +35,7 @@ namespace MemoryManagement
 	private:
 		static x86::PageDirectory current;
 		static x86::PageDirectory kernel;
+		static void clonePageTable(unsigned int *pageDirectory, unsigned int idx);
 		Virtual();
 		~Virtual();
 	public:
@@ -42,7 +43,7 @@ namespace MemoryManagement
 
 		static x86::PageDirectory GetPageDirectory();
 		static x86::PageDirectory GetKernelDirectory();
-		static x86::PageDirectory ClonePageDirectory(x86::PageDirectory dir = kernel);
+		static x86::PageDirectory ClonePageDirectory(x86::PageDirectory dir = kernel, bool usePosixSemantics = false);
 		static void SwitchPageDirectory(x86::PageDirectory dir);
 
 		static void MapMemory(unsigned int src, unsigned int dest, unsigned int flags);

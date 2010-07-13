@@ -17,7 +17,7 @@ namespace ELF {	class ELFObject; }
 #include <Drivers/DriverStructures.h>
 #include <ELF/ELFHeaders.h>
 #include <IPC/SharedPage.h>
-#include <Multitasking/SystemCalls.h>
+#include <SystemCalls/Native.h>
 
 typedef void (*Receipt)(struct Message *);
 
@@ -41,7 +41,7 @@ class Process
 {
 friend class Scheduler;
 friend class Thread;
-friend class SystemCalls::Internal;
+friend class SystemCalls::Native::Internal;
 private:
 	MemoryManagement::x86::PageDirectory pageDir;
 	char name[32];

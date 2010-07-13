@@ -3,7 +3,7 @@
 #include <MemoryAllocation/Physical.h>
 #include <Multitasking/Paging.h>
 #include <Multitasking/Scheduler.h>
-#include <Multitasking/SystemCalls.h>
+#include <SystemCalls/Native.h>
 #include <ELF/ELFLoader.h>
 
 extern "C" void Main(unsigned int, MultibootInfo *);
@@ -24,7 +24,7 @@ void Main(unsigned int stack, MultibootInfo *multiboot)
 	//Make the kernel's interrupt management system completely operational...
 	Interrupts::Install();
 	//...and use it to install a basic system call subsytem
-	Interrupts::AddInterrupt(new SystemCalls::SystemCallInterrupt());
+	Interrupts::AddInterrupt(new SystemCalls::Native::SystemCallInterrupt());
 
 	sch = Scheduler::GetScheduler();
 	//Set up a basic stack for the kernel to use on an external event

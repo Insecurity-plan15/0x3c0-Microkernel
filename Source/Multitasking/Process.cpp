@@ -4,7 +4,7 @@
 #include <Memory.h>
 #include <MemoryAllocation/AllocateMemory.h>
 #include <Common/CPlusPlus.h>
-#include <Multitasking/SystemCalls.h>
+//#include <Multitasking/Native.h>
 #include <IPC/MessageCodes.h>
 
 //pd must be a blank page directory, holding only the heap and kernel space
@@ -160,7 +160,7 @@ void Process::SendMessage(Message *message)
 	//Allocate a block of memory into the destination process' address space which is big enough for the data
 	void *data = sendTo->GetAllocator()->Allocate(message->GetLength());
 	//Clone the message structure, but point it to the new data
-	SystemCalls::UserLevelStructures::Message *m = new (sendTo) SystemCalls::UserLevelStructures::Message();
+	SystemCalls::Native::UserLevelStructures::Message *m = new (sendTo) SystemCalls::Native::UserLevelStructures::Message();
 	//Create the new thread
 	Thread *th = new Thread((ThreadStart)sendTo->onReceipt, sendTo, message->GetCode() == MessageCodes::Drivers::InterruptReceived);
 	//Find the page directory to copy from. If the source is 0, use the kernel's
