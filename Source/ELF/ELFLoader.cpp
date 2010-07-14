@@ -52,7 +52,7 @@ void ELFLoader::Start(void *parameter)
 	//If there's no process to load it into, it doesn't matter
 	if(process == 0)
 		return;
-	thread = new Thread((ThreadStart)header->EntryPoint, process);
+	thread = new Thread(header->EntryPoint, process);
 	//The first point of order is to switch address spaces, so the right process gets the data
 	MemoryManagement::Virtual::SwitchPageDirectory(process->GetPageDirectory());
 	params = new (process) void *[1];

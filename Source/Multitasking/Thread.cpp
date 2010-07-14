@@ -77,11 +77,11 @@ __attribute__((aligned(0x1000))) void Thread::ring3Start(StackStates::x86Stack *
 	*/
 }
 
-__attribute__((aligned(0x1000))) Thread::Thread(ThreadStart start, Process *p, bool irqMessage)
+__attribute__((aligned(0x1000))) Thread::Thread(unsigned int start, Process *p, bool irqMessage)
 {
 	parent = p;
 	state = new StackStates::x86Stack();
-	state->EntryPoint = (unsigned int)start;
+	state->EntryPoint = start;
 	state->CS = 0x18 | 3;	//0x18 points to the user code segment, ORed with the privilege level
 	state->DS = 0x20 | 3;	//User data segment, OR privilege level
 	state->ESP = state->EBP = state->EIP = 0;
@@ -140,6 +140,9 @@ void Thread::Start(void **args, unsigned int argCount)
 		state->ESP = state->EBP = userModeActive ? (unsigned int)(stackState + 2) : (unsigned int)stackState;
 		state->UserESP = state->ESP;
 	}
+	else
+        //Not the best solution, but I don't know how to invoke an overloaded delete[] operator
+        parent->GetAllocator()->Free((void *)(stackState - 0x1000));
 	/*
 	* Since the thread starts executing kernel code, it needs to be able to access it
 	* I'm not going to make the entire kernel available to user-space, but I will expose the two pages
@@ -172,6 +175,11 @@ void Thread::SetState(StackStates::x86Stack *st)
 		st->ESP = esp;
 		st->EBP = ebp;
 	}
+}
+
+StackStates::x86Stack *Thread::GetState()
+{
+    return state;
 }
 
 Process *Thread::GetParent()

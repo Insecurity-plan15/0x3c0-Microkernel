@@ -12,7 +12,7 @@ namespace ThreadStatus
 
     const unsigned int CustomState = 0x1 << 1;
 
-    const unsigned int IsInterruptMessage = 0x1 << 1;
+    const unsigned int IsInterruptMessage = 0x1 << 2;
 };
 
 class Thread
@@ -31,11 +31,12 @@ private:
 	static void returnMethod();
 	static void ring3Start(StackStates::x86Stack *stack, ...);
 public:
-	Thread(ThreadStart start, Process *p, bool irqMessage = false);	//start is the initial EIP
+	Thread(unsigned int start, Process *p, bool irqMessage = false);	//start is the initial EIP
 	~Thread();
 	//args is a collection of [argCount] arguments
 	void Start(void **args, unsigned int argCount = 1);
 	void SetState(StackStates::x86Stack *st);
+	StackStates::x86Stack *GetState();
 	Process *GetParent();
 
 	bool IsSleeping();

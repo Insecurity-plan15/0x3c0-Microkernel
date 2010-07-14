@@ -17,12 +17,11 @@ Process::Process(MemoryManagement::x86::PageDirectory pd, Receipt messageMethod,
 	//Set up the security privileges
 	securityPrivileges = new Bitmap(SecurityPrivilegeCount);
 	sharedPages = new List<SharedPage *>();
-	state = ProcessState::Running;
 	//The ELF object is uninitialised
 	//When a message is received, a popup thread will be created, starting in a copy of this method. It will have its own stack
 	onReceipt = messageMethod;
 
-	flags = f;
+	state = f;
 
 	//Apply the basic security privileges
 	for(unsigned int i = 0; i < sizeof(SecurityPrivilege::DefaultPrivileges) / sizeof(unsigned int); i++)
@@ -31,7 +30,7 @@ Process::Process(MemoryManagement::x86::PageDirectory pd, Receipt messageMethod,
 	currentThread = new LinkedListNode<Thread *>(0);
 
 	if(onReceipt != 0)
-		flags |= 0x1;
+		state |= ProcessState::ReceiptMethod;
 }
 
 Process::~Process()
@@ -141,9 +140,9 @@ void Process::SetReceiptMethod(Receipt onRec)
 {
 	onReceipt = onRec;
 	if(onReceipt != 0)
-		flags |= 0x1;
+		state |= ProcessState::ReceiptMethod;
 	else
-		flags &= ~0x1;
+		state &= ~ProcessState::ReceiptMethod;
 }
 
 bool Process::Kill()
@@ -162,7 +161,7 @@ void Process::SendMessage(Message *message)
 	//Clone the message structure, but point it to the new data
 	SystemCalls::Native::UserLevelStructures::Message *m = new (sendTo) SystemCalls::Native::UserLevelStructures::Message();
 	//Create the new thread
-	Thread *th = new Thread((ThreadStart)sendTo->onReceipt, sendTo, message->GetCode() == MessageCodes::Drivers::InterruptReceived);
+	Thread *th = new Thread((unsigned int)sendTo->onReceipt, sendTo, message->GetCode() == MessageCodes::Drivers::InterruptReceived);
 	//Find the page directory to copy from. If the source is 0, use the kernel's
 	MemoryManagement::x86::PageDirectory pd = message->GetSource() == 0 ? MemoryManagement::Virtual::GetKernelDirectory() :
 		message->GetSource()->pageDir;
@@ -193,9 +192,4 @@ Drivers::DriverInfoBlock *Process::GetDriver()
 bool Process::IsDriver()
 {
 	return driver != 0;
-}
-
-unsigned int Process::GetFlags()
-{
-	return flags;
 }

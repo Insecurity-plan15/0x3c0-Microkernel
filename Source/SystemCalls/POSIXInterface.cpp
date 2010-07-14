@@ -1,4 +1,6 @@
 #include <SystemCalls/POSIXInterface.h>
+#include <Multitasking/Scheduler.h>
+#include <Multitasking/Process.h>
 
 using namespace SystemCalls::POSIX;
 
@@ -12,13 +14,24 @@ Internal::~Internal()
 
 SystemCallDefinition(fork)
 {
-    //Clones a process' address space
-    //Only the calling thread is cloned
-    //All file handles remain open
+    Scheduler *sch = Scheduler::GetScheduler();
+    Process *current = sch->GetCurrentProcess();
+    Thread *currentThread = sch->GetCurrentThread();
 
-    //to avoid having to copy and rebase the stack (horrid idea), I'll simply put it in the same memory address as the parent
-    //fork() will already have copied the values themselves, making this the simplest way
-    return 0;
+    MemoryManagement::x86::PageDirectory forkedPD = MemoryManagement::Virtual::ClonePageDirectory(current->GetPageDirectory(), true);
+    Process *forked = new Process(forkedPD, current->GetReceiptMethod(), current->GetState());
+    Thread *newThread = new Thread(currentThread->GetEIP(), forked, false);
+
+    /*
+    * Note that this includes ESP and EBP. Ordinarily I'd be concerned about bad stack data, but it got copied over when
+    * I cloned the page directory
+    */
+    newThread->SetState( currentThread->GetState() );
+    //As per POSIX specifications, fork() returns 0 in the child process
+    newThread->GetState()->EAX = 0;
+    //Start the thread, with no arguments - they'd be ignored anyway
+    newThread->Start(0, 0);
+    return (unsigned int)forked;
 }
 
 SystemCallDefinition(execve)

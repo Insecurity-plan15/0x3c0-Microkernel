@@ -59,7 +59,7 @@ namespace SystemCalls
                     char Name[32];
                     unsigned int PID;
                     DriverInfoBlock *Driver;
-                    unsigned int Flags;
+                    unsigned int State;
                     MemoryUsageStructure *MemoryUsage;
                     unsigned int ThreadCount;
                     Thread *Threads;

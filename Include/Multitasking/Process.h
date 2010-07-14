@@ -35,6 +35,8 @@ namespace ProcessState
 	const unsigned int Zombie = 0x4;
 	//Kernel: Can respond to a process' requests for restricted privileges
 	const unsigned int Kernel = 0x8;
+	//ReceiptMethod: Can receive message
+	const unsigned int ReceiptMethod = 0x10;
 }
 
 class Process
@@ -55,10 +57,8 @@ private:
 	Receipt onReceipt;
 	Drivers::DriverInfoBlock *driver;
 	LinkedListNode<Thread *> *currentThread;
-	//If a process cannot receive messages, bit 0 is 0
-	unsigned int flags;
 public:
-	Process(MemoryManagement::x86::PageDirectory pd, Receipt messageMethod, unsigned int f = 0);
+	Process(MemoryManagement::x86::PageDirectory pd, Receipt messageMethod, unsigned int f = ProcessState::Running);
 	~Process();
 	MemoryManagement::x86::PageDirectory GetPageDirectory();	//Used to manipulate the page directory and implement shared pages
 
@@ -95,7 +95,5 @@ public:
 	void BecomeDriver(Drivers::DriverInfoBlock *d);
 	Drivers::DriverInfoBlock *GetDriver();
 	bool IsDriver();
-
-	unsigned int GetFlags();
 };
 #endif

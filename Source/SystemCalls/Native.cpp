@@ -43,7 +43,7 @@ SystemCallDefinition(CreateThread)
 	//If the process doesn't have permission to create a thread, don't go any further
 	if(! p->GetSecurityPrivileges()->TestBit(SecurityPrivilege::CreateThread))
 		return 3;
-	thread = new Thread((ThreadStart)eax, sched->GetCurrentProcess());
+	thread = new Thread(eax, sched->GetCurrentProcess());
 	//Get the current process from the current CPUs scheduler, and create a thread
 	thread->Start((void **)ebx);
 	sched->Wake(p);
@@ -132,7 +132,7 @@ SystemCallDefinition(CreateProcess)
 			false, true);
 	}
 	//If ECX isn't valid, the process will page fault and be immediately killed
-	th = new Thread((ThreadStart)ecx, p);
+	th = new Thread(ecx, p);
 
 	th->Start((void **){ 0 });
 
@@ -452,7 +452,7 @@ SystemCallDefinition(RequestProcessData)
 			}
 			else
 				returnData->Processes[i].Driver = 0;
-			returnData->Processes[i].Flags = node->Value->GetFlags();
+			returnData->Processes[i].State = node->Value->GetState();;
 			if(BitSet(flags, 4))
 			{
 				UserLevelStructures::ProcessData::MemoryUsageStructure *memUsage = new (p) UserLevelStructures::ProcessData::MemoryUsageStructure();
