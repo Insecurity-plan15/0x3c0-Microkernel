@@ -14,14 +14,16 @@ private:
 	Process *source;
 	Process *destination;
 	unsigned int code;
+	unsigned int messageChain;
 public:
-	Message(void *d, unsigned int l, Process *src, Process *dest, unsigned int cd);
+	Message(void *d, unsigned int l, Process *src, Process *dest, unsigned int cd, unsigned int msgChain);
 	~Message();
 	Process *GetDestination();
 	Process *GetSource();
 	void *GetData();
 	unsigned int GetLength();
 	unsigned int GetCode();
+	unsigned int GetMessageChain();
 };
 
 #endif

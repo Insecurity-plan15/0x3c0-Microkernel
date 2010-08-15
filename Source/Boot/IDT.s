@@ -48,7 +48,9 @@ ISRWithoutError 9
 	%assign i i+1
 %endrep
 
+; Both system call interfaces - native and POSIX
 ISRWithoutError	48
+ISRWithoutError 64
 
 extern exceptionHandler
 extern irqHandler

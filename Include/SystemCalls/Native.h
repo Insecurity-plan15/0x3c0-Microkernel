@@ -17,6 +17,7 @@ namespace SystemCalls
                 unsigned int Length;
                 unsigned int Code;
                 unsigned int Source;
+                unsigned int MessageChain;
             } __attribute__((packed));
 
             struct MemoryBlock

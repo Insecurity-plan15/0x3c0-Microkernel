@@ -177,7 +177,7 @@ SystemCallDefinition(SendMessage)
 	valid = isAddressValid(ebx, true);
 	if(valid != 0)
 		return valid;
-	msg = new Message((void *)internalMsg->Data, internalMsg->Length, p, (Process *)ebx, internalMsg->Code);
+	msg = new Message((void *)internalMsg->Data, internalMsg->Length, p, (Process *)ebx, internalMsg->Code, internalMsg->MessageChain);
 	p->SendMessage(msg);
 	delete msg;
 	return 0;

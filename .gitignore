@@ -28,4 +28,4 @@ Makefile
 *.depend
 
 # Ignore all libraries
-/Programs & libraries/
+/Porting/

@@ -62,6 +62,7 @@ extern "C"
 	void IRQ15();
 
 	void ISR48();
+	void ISR64();
 }
 
 //To start with, the GDT is a pointer to a pre-allocated array. When multiple CPUs are involved, it gets rearranged slightly
@@ -149,7 +150,10 @@ void DescriptorTables::installIDT()
 	ISREntry(29);
 	ISREntry(30);
 	ISREntry(31);
+
+	//Links to assembly code, covering the system call interfaces
 	ISREntry(48);
+	ISREntry(64);
 
 	IRQEntry(0);
 	IRQEntry(1);

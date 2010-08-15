@@ -63,7 +63,7 @@ void operator delete(void *p)
 {
 	MemoryManagement::Heap *hp = MemoryManagement::Heap::GetKernelHeap();
 
-	if(hp != 0)
+	if(hp != 0 && p != (void *)0)
 		hp->Free(p);
 }
 
@@ -76,7 +76,7 @@ void operator delete[](void *p)
 {
 	MemoryManagement::Heap *hp = MemoryManagement::Heap::GetKernelHeap();
 
-	if(hp != 0)
+	if(hp != 0 && p != (void *)0)
 		hp->Free(p);
 }
 

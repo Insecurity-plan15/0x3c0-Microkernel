@@ -37,7 +37,7 @@ SystemCallDefinition(fork)
 SystemCallDefinition(execve)
 {
     //Receives a collection of memory images
-    //All address space outside of heaps is wiped, and memory image loaded
+    //All address space outside of kernel heaps is wiped, and memory image loaded
     //Current threads deleted, new thread added
     //  initial values of environment, arguments, EIP, etc
 

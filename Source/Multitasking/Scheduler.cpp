@@ -279,6 +279,8 @@ void Scheduler::Sleep(Process *p)
 {
 	RemoveProcess(p);
 	sleepingProcesses->Add(p);
+	//Tell the process to notify its parent that it's gone to sleep
+	p->sendStatusChangeMessage(0x0);
 }
 
 void Scheduler::Wake(Process *p)
@@ -290,6 +292,7 @@ void Scheduler::Wake(Process *p)
 		return;
 	sleepingProcesses->Remove(p);
 	AddProcess(p);
+	p->sendStatusChangeMessage(0x1);
 }
 
 Scheduler *Scheduler::GetScheduler()

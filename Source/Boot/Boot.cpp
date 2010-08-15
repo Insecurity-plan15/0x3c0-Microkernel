@@ -4,6 +4,7 @@
 #include <Multitasking/Paging.h>
 #include <Multitasking/Scheduler.h>
 #include <SystemCalls/Native.h>
+#include <SystemCalls/POSIXInterface.h>
 #include <ELF/ELFLoader.h>
 
 extern "C" void Main(unsigned int, MultibootInfo *);
@@ -25,6 +26,8 @@ void Main(unsigned int stack, MultibootInfo *multiboot)
 	Interrupts::Install();
 	//...and use it to install a basic system call subsytem
 	Interrupts::AddInterrupt(new SystemCalls::Native::SystemCallInterrupt());
+	//Finally, set up a POSIX subsystem for ports of important programs
+	Interrupts::AddInterrupt(new SystemCalls::POSIX::SystemCallInterrupt());
 
 	sch = Scheduler::GetScheduler();
 	//Set up a basic stack for the kernel to use on an external event

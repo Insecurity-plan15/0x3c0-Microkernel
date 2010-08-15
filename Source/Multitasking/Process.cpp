@@ -4,11 +4,23 @@
 #include <Memory.h>
 #include <MemoryAllocation/AllocateMemory.h>
 #include <Common/CPlusPlus.h>
-//#include <Multitasking/Native.h>
 #include <IPC/MessageCodes.h>
 
+void Process::sendStatusChangeMessage(unsigned int newStatus)
+{
+	//Upper 32 bits = child process ID
+	//Lower 32 bits = new status
+	unsigned long long processStatusData = ((unsigned long long)this << 32) | newStatus;
+	//A source PID of 0 means that it's a kernel message
+	Message *m = new Message((void *)&processStatusData, sizeof(processStatusData), 0, parent, 41, 0);
+
+	if(parent != 0)
+		parent->SendMessage(m);
+	delete m;
+}
+
 //pd must be a blank page directory, holding only the heap and kernel space
-Process::Process(MemoryManagement::x86::PageDirectory pd, Receipt messageMethod, unsigned int f)
+Process::Process(MemoryManagement::x86::PageDirectory pd, Receipt messageMethod, unsigned int f, Process *par)
 {
 	pageDir = pd;
 	threads = new LinkedList<Thread *>();
@@ -31,6 +43,11 @@ Process::Process(MemoryManagement::x86::PageDirectory pd, Receipt messageMethod,
 
 	if(onReceipt != 0)
 		state |= ProcessState::ReceiptMethod;
+
+	parent = par;
+	childProcesses = new List<Process *>();
+	if(par != 0)
+		par->childProcesses->Add(this);
 }
 
 Process::~Process()
@@ -39,8 +56,7 @@ Process::~Process()
 	delete allocator;
 	delete securityPrivileges;
 	delete sharedPages;
-	if(elfObject != 0)
-		delete elfObject;
+	delete elfObject;
 }
 
 MemoryManagement::x86::PageDirectory Process::GetPageDirectory()
@@ -174,6 +190,7 @@ void Process::SendMessage(Message *message)
 	m->Length = message->GetLength();
 	m->Code = message->GetCode();
 	m->Source = (unsigned int)message->GetSource();
+	m->MessageChain = message->GetMessageChain();
 	//Start the new thread
 	th->Start((void **)&m);
 }

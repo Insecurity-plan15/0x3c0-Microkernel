@@ -57,8 +57,13 @@ private:
 	Receipt onReceipt;
 	Drivers::DriverInfoBlock *driver;
 	LinkedListNode<Thread *> *currentThread;
+	//Below two variables are only used by POSIX
+	List<Process *> *childProcesses;
+	Process *parent;
+
+	void sendStatusChangeMessage(unsigned int newStatus);
 public:
-	Process(MemoryManagement::x86::PageDirectory pd, Receipt messageMethod, unsigned int f = ProcessState::Running);
+	Process(MemoryManagement::x86::PageDirectory pd, Receipt messageMethod, unsigned int f = ProcessState::Running, Process *par = 0);
 	~Process();
 	MemoryManagement::x86::PageDirectory GetPageDirectory();	//Used to manipulate the page directory and implement shared pages
 

@@ -1,12 +1,13 @@
 #include <IPC/Message.h>
 
-Message::Message(void *d, unsigned int l, Process *src, Process *dest, unsigned int cd)
+Message::Message(void *d, unsigned int l, Process *src, Process *dest, unsigned int cd, unsigned int msgChain)
 {
 	data = d;
 	length = l;
 	source = src;
 	destination = dest;
 	code = cd;
+	messageChain = msgChain;
 }
 
 Message::~Message()
@@ -36,4 +37,9 @@ unsigned int Message::GetLength()
 unsigned int Message::GetCode()
 {
 	return code;
+}
+
+unsigned int Message::GetMessageChain()
+{
+    return messageChain;
 }
