@@ -3,7 +3,7 @@
 
 #include <SystemCalls/SystemCalls.h>
 
-#define TotalSystemCalls	18
+#define TotalSystemCalls	19
 
 namespace SystemCalls
 {
@@ -102,6 +102,7 @@ namespace SystemCalls
             SystemCallMethod(SleepThread);
             SystemCallMethod(WakeThread);
             SystemCallMethod(RequestProcessData);
+            SystemCallMethod(GetCurrentThread);
         };
 
         class SystemCallInterrupt : public InterruptSink

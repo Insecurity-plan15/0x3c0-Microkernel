@@ -8,8 +8,10 @@
 
 void Process::sendStatusChangeMessage(unsigned int newStatus)
 {
+	//alter this. Lower 32 = need to redefine to include the exit code
 	//Upper 32 bits = child process ID
-	//Lower 32 bits = new status
+	//Middle 16 bits = new status
+	//Lower 16 bits = exit code
 	unsigned long long processStatusData = ((unsigned long long)this << 32) | newStatus;
 	//A source PID of 0 means that it's a kernel message
 	Message *m = new Message((void *)&processStatusData, sizeof(processStatusData), 0, parent, 41, 0);

@@ -152,6 +152,7 @@ SystemCallDefinition(KillProcess)
 	for(LinkedListNode<Thread *> *nd = p->GetThreads()->First; nd != 0 && nd->Value != 0; nd = nd->Next)
 		delete nd->Value;
 	delete p;
+	p->sendStatusChangeMessage((0x2 << 16) | (ebx & 0xFFFF));
 	sched->Yield(stack);
 	return 0;
 }
@@ -488,6 +489,13 @@ SystemCallDefinition(RequestProcessData)
 	return 0;
 }
 
+SystemCallDefinition(GetCurrentThread)
+{
+	Scheduler *sched = Scheduler::GetScheduler();
+
+	return (unsigned int)sched->GetCurrentThread();
+}
+
 void SystemCallInterrupt::receive(StackStates::Interrupt *stack)
 {
 	unsigned int eip = stack->EIP;
@@ -531,6 +539,7 @@ SystemCallInterrupt::SystemCallInterrupt()
 	calls[15] = Internal::SleepThread;
 	calls[16] = Internal::WakeThread;
 	calls[17] = Internal::RequestProcessData;
+	calls[18] = Internal::GetCurrentThread;
 }
 
 InterruptSink::~InterruptSink()
