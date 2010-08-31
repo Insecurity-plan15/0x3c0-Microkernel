@@ -1,4 +1,5 @@
 #include <TimerDriver.h>
+#include <malloc.h>
 
 #define OutportByte(port, value)	asm volatile ("outb %%al, %0" : : "dN"(port), "a"(value))
 #define TimerHertz		1193180
@@ -18,6 +19,7 @@ Timer::Timer(unsigned int f)
 	OutportByte(0x40, (unsigned char)(divisor & 0xFF));
 	OutportByte(0x40, (unsigned char)((divisor >> 8) & 0xFF));
 	//wakeProcesses = new List<ProcessSleepData *>();
+	malloc(0);
 }
 
 Timer::~Timer()

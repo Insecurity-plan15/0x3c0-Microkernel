@@ -13,7 +13,6 @@ struct ProcessSleepData
 class Timer
 {
 private:
-	//How am I supposed to allocate space for this without a new implementation
 	List<ProcessSleepData *> *wakeProcesses;
 	unsigned int frequency;
 	unsigned long long ticks;

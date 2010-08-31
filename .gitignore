@@ -27,5 +27,6 @@ Makefile
 *.bat
 *.depend
 
-# Ignore all libraries
+# Ignore all libraries and testing programs
 /Porting/
+/Testing/
