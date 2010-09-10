@@ -1,10 +1,4 @@
-[GlOBAL SetIDT]
 [GLOBAL SetTSS]
-
-SetIDT:
-	mov eax, [esp+4]
-	lidt [eax]
-	ret
 
 SetTSS:
 	; The first parameter is the GDT index I need to load

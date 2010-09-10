@@ -8,27 +8,29 @@ namespace x86
 {
 	struct GDTEntry
 	{
-		unsigned short LimitLow;
-		unsigned short BaseLow;
-		unsigned char BaseMiddle;
-		unsigned char AccessFlags;
-		unsigned char Granularity;
-		unsigned char BaseHigh;
+		uint16 LimitLow;
+		uint16 BaseLow;
+		uint8 BaseMiddle;
+		uint8 AccessFlags;
+		uint8 Granularity;
+		uint8 BaseHigh;
 	} __attribute__((packed));
 
 	struct IDTEntry
 	{
-		unsigned short FunctionLow;
-		unsigned short SegmentSelector;
-		unsigned char Reserved;
-		unsigned char Flags;
-		unsigned short FunctionHigh;
+		uint16 FunctionLow;
+		uint16 SegmentSelector;
+		uint8 Reserved0;
+		uint8 Flags;
+		uint16 FunctionMiddle;
+		uint32 FunctionHigh;
+		uint32 Reserved1;
 	} __attribute__((packed));
 
 	struct DescriptorTablePointer
 	{
 		unsigned short Limit;
-		unsigned int Base;		//Address of the first entry
+		cpuRegister Base;		//Address of the first entry
 	} __attribute__((packed));
 
 	struct TaskStateSegment

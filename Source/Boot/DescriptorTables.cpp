@@ -161,7 +161,7 @@ void DescriptorTables::installIDT()
 	IRQEntry(14);
 	IRQEntry(15);
 
-	//SetIDT(&idtPointer);
+	asm volatile ("lidt %0" : "=m"(idtPointer));
 }
 
 //By this point, I expect physical and virtual memory management to be set up. Heap allocations are therefore no problem
@@ -238,15 +238,18 @@ void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0, bool in
 void DescriptorTables::setIDTGate(unsigned char i, virtAddress function, unsigned short selector, unsigned char flags)
 {
 	idt[i].FunctionLow = function & 0xFFFF;
-	idt[i].FunctionHigh = (function >> 16) & 0xFFFF;
+	idt[i].FunctionMiddle = (function >> 16) & 0xFFFF;
+	idt[i].FunctionHigh = (function >> 32) & 0xFFFFFFFF;
 	idt[i].SegmentSelector = selector;
-	idt[i].Reserved = 0;
+	idt[i].Reserved0 = 0;
+	idt[i].Reserved1 = 0;
 	idt[i].Flags = flags | 0x60;	// | 0x60 indicates that interrupts can come from ring 3
 }
 
 void DescriptorTables::Install()
 {
 	installIDT();
+	asm volatile ("xchg %bx, %bx");
 }
 
 void DescriptorTables::InstallTSS(virtAddress esp0, unsigned int cpuID)

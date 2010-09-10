@@ -14,7 +14,6 @@ void Main(unsigned int stack, MultibootInfo *multiboot)
 	Scheduler *sch = 0;
 	MemoryManagement::x86::PageDirectory pd;
 
-	asm volatile ("xchg %bx, %bx");
 	//First things first, load the GDT, IDT and TSS
 	DescriptorTables::Install();
 	//Set up the page allocation bitmap, accounting for the memory map
