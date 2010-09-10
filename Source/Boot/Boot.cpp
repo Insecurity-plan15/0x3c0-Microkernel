@@ -14,7 +14,7 @@ void Main(unsigned int stack, MultibootInfo *multiboot)
 	Scheduler *sch = 0;
 	MemoryManagement::x86::PageDirectory pd;
 
-	asm volatile ("cli");
+	asm volatile ("xchg %bx, %bx");
 	//First things first, load the GDT, IDT and TSS
 	DescriptorTables::Install();
 	//Set up the page allocation bitmap, accounting for the memory map
@@ -36,7 +36,7 @@ void Main(unsigned int stack, MultibootInfo *multiboot)
 	{
 		Module *mod = &multiboot->Modules[i];
 		//The first 4 MiB is mapped to the last 0xF0000000 bytes of memory
-		unsigned int properStart = mod->Start < 0x400000 ? mod->Start + 0xF0000000 : mod->Start;
+		virtAddress properStart = (virtAddress)(mod->Start < 0x400000 ? mod->Start + 0xF0000000 : mod->Start);
 		Process *elfProcess = 0;
 		ELF::ELFLoader *loader = 0;
 
@@ -46,7 +46,7 @@ void Main(unsigned int stack, MultibootInfo *multiboot)
 
 		//The second parameter is 0 because it can't receive messages yet. A system call is available to allow message reception
 		elfProcess = new Process(pd, 0);
-		loader = new ELF::ELFLoader((void *)properStart, mod->End - mod->Start);
+		loader = new ELF::ELFLoader(properStart, mod->End - mod->Start);
 		loader->SetProcess(elfProcess);
 		sch->AddProcess(elfProcess);
 		loader->Start((void *)0xABCDEF);

@@ -10,7 +10,7 @@ extern "C" StackStates::Interrupt *exceptionHandler(StackStates::Interrupt *stac
 	//When stack->Interrupt number is passed as a 32-bit integer, it is sign-extended. This can make the value strange
 	//It needs to be capped to a reasonable value
 	if((stack->InterruptNumber & 0xFF) != 0x30)
-		asm volatile ("xchg %%bx, %%bx" : : "a"(stack->InterruptNumber & 0xFF), "b"(stack->ErrorCode), "c"(stack->EIP), "d"(0xABCFED));
+		asm volatile ("xchg %%bx, %%bx" : : "a"(stack->InterruptNumber & 0xFF), "c"(stack->RIP), "d"(0xABCFED));
 	Interrupts::InvokeInterruptChain(stack->InterruptNumber & 0xFF, stack);
 	Ports::WriteByte(0x20, 0x20);
 	return stack;

@@ -1,27 +1,41 @@
-%ifndef Paging_S
-%define Paging_S
+GLOBAL pml4Base
 
 ; This file just contains the basic structures necessary to get the higher half operating
-; It also stores the first page directory entries  (including recursive page mapping)
+; It also stores the first page directory entries (including recursive page mapping)
 
-VirtualAddressBase	equ 0xF0000000
-KernelPageNumber	equ (VirtualAddressBase >> 22)	; Page directory index
+VirtualAddressBase				equ 0xFFFF800000000000
+VirtualAddressBasePML4			equ (VirtualAddressBase >> 40) & 0x1FF
+VirtualAddressBasePDPT			equ (VirtualAddressBase >> 31) & 0x1FF
+VirtualAddressBasePageDirectory	equ (VirtualAddressBase >> 22) & 0x1FF
+VirtualAddressBasePageTable		equ (VirtualAddressBase >> 13) & 0x1FF
 
 section .data
-align 0x1000
-BootPageTable:	; Contains the initial identity mapping of the first 4 MiB, and the mapping between VirtualAddressBase and 0
-	%assign i 0
-	%rep 1024
-		dd i | 11b
-		%assign i i+4096
-	%endrep
 
-align 0x1000
-PageDirectory:
-	dd (BootPageTable - VirtualAddressBase + 11b)
-	times (KernelPageNumber - 1) dd 0
-	dd (BootPageTable - VirtualAddressBase + 111b)
-	; There's a -1 because the reverse mapping goes at the end
-	times (1024 - KernelPageNumber - 1 - 1) dd 0
-	dd (PageDirectory - VirtualAddressBase + 11b)
-%endif
+; All this just creates a simple mapping for the bootstrap code
+; pageTable gets reused so that it can create another mapping later
+
+align 4096
+pml4Base:
+	dq (pdpt - VirtualAddressBase + 11b)
+	times 255 dq 0
+	dq (pdpt - VirtualAddressBase + 11b)
+	times 255 dq 0
+
+align 4096
+pdpt:
+	dq (pageDirectory - VirtualAddressBase + 11b)
+	times 511 dq 0
+
+align 4096
+pageDirectory:
+	dq pageTable - VirtualAddressBase + 11b
+	times 511 dq 0
+
+align 4096
+; This maps 2 MB from address 0x0 to another address
+pageTable:
+	%assign i 0
+	%rep 512
+		dq i + 11b
+		%assign i i+0x1000
+	%endrep

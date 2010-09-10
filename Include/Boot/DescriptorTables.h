@@ -1,6 +1,7 @@
 #ifndef DescriptorTables_H
 #define DescriptorTables_H
 
+#include <Typedefs.h>
 #include <Multitasking/Scheduler.h>
 
 namespace x86
@@ -85,6 +86,7 @@ class DescriptorTables
 {
 friend class Scheduler;
 private:
+	static virtAddress initialGDTValue;
 	static x86::GDTEntry *gdt;
 	static x86::DescriptorTablePointer gdtPointer;
 
@@ -96,16 +98,16 @@ private:
 	DescriptorTables();
 	~DescriptorTables();
 	static void installGDT();
-	#define ISREntry(n)	setIDTGate(n, (unsigned int)ISR##n, 0x8, 0x8E)
-	#define IRQEntry(n) setIDTGate(n+32, (unsigned int)IRQ##n, 0x8, 0x8E)
+	#define ISREntry(n)	setIDTGate(n, (virtAddress)ISR##n, 0x8, 0x8E)
+	#define IRQEntry(n) setIDTGate(n+32, (virtAddress)IRQ##n, 0x8, 0x8E)
 	static void installIDT();
 	//If newCPU is true, cpuID is ignored and a new TSS is created at the end of the GDT
 	static void installTSS(unsigned int cpuID, unsigned int esp0, bool newCPU = false);
-	static void setIDTGate(unsigned char i, unsigned int function, unsigned short selector, unsigned char flags);
+	static void setIDTGate(unsigned char i, virtAddress function, unsigned short selector, unsigned char flags);
 public:
 	static void Install();
-	static void InstallTSS(unsigned int esp0, unsigned int cpuID);
-	static void AddTSS(unsigned int esp0);
+	static void InstallTSS(virtAddress esp0, unsigned int cpuID);
+	static void AddTSS(virtAddress esp0);
 };
 
 #endif

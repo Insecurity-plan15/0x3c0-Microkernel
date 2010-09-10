@@ -18,7 +18,6 @@ void Thread::returnMethod()
 * thread's method
 */
 
-//Hmm. Odd. I want to push a set of variables, not an array of them. How do I do this (variadic parameters?)
 __attribute__((aligned(0x1000))) void Thread::ring3Start(StackStates::x86Stack *state, ...)
 {
 	//This snippet has been lifted by JamesM's kernel development tutorials (with some adaptations)
@@ -35,36 +34,31 @@ __attribute__((aligned(0x1000))) void Thread::ring3Start(StackStates::x86Stack *
 	* 4) The stack seems to get very messed up, so I try to correct it beforehand. This could very easily be wrong,
 	*	or change between compiler revisions. However, it works here
 	*/
-	unsigned int CS = 0;
+	cpuRegister CS = 0;
 
+
+//bleh. correct below
 	asm volatile ("mov %%cs, %0" : "=g"(CS));
 
 	asm volatile("			\
 		cli;				\
-		push %%edx;			\
+		push %%rdx;			\
 		mov $0x23, %%dx;	\
 		mov %%dx, %%ds;		\
 		mov %%dx, %%es;		\
 		mov %%dx, %%fs;		\
 		mov %%dx, %%gs;		\
-		pop %%edx;			\
+		pop %%rdx;			\
 							\
 		push %0;			\
 		push %1;			\
 		push %2;			\
 		push %3;			\
-		push $1f;			\
-		iret;				\
-	1:						\
-		add $0x10, %%esp;	\
-		push %4;			\
 		push %5;			\
-		push %6;			\
-		push %7;			\
-		push %8;			\
-		push %9;			\
-		sub $0x24, %%esp" : : "g"(state->DS), "g"(state->ESP), "g"(state->EFLAGS), "g"(state->CS), "g"(&Thread::returnMethod),
-								"g"(state->EntryPoint), "g"(state->EBP), "g"(state->EDI), "g"(state->ESI), "g"(state->EBX) : "%edx", "%ecx");
+		iretq" : : "g"(state->DS), "g"(state->RSP), "g"(state->EFLAGS), "g"(state->CS), "g"(&Thread::returnMethod),
+								"g"(state->EntryPoint), "g"(state->RBP),
+								"g"(state->RDI), "g"(state->RSI),
+								"g"(state->RBX));
 	/*
 	* The code which begins to run at label 1: is running in ring 3.
 	* This stack hackery makes me a little bit nervous, but it seems valid. I've tested with a variety of method signatures,
@@ -77,14 +71,14 @@ __attribute__((aligned(0x1000))) void Thread::ring3Start(StackStates::x86Stack *
 	*/
 }
 
-__attribute__((aligned(0x1000))) Thread::Thread(unsigned int start, Process *p, bool irqMessage)
+__attribute__((aligned(0x1000))) Thread::Thread(virtAddress start, Process *p, bool irqMessage)
 {
 	parent = p;
 	state = new StackStates::x86Stack();
 	state->EntryPoint = start;
 	state->CS = 0x18 | 3;	//0x18 points to the user code segment, ORed with the privilege level
 	state->DS = 0x20 | 3;	//User data segment, OR privilege level
-	state->ESP = state->EBP = state->EIP = 0;
+	state->RSP = state->RBP = state->RIP = 0;
 	asm volatile ("pushf; pop %0" : "=r"(state->EFLAGS));
 
 	//Set the Interrupt Enabled bit in EFLAGS, just as STI does
@@ -100,9 +94,9 @@ __attribute__((aligned(0x1000))) Thread::Thread(unsigned int start, Process *p, 
 Thread::~Thread()
 {
 	//Free the stack that was created to prevent any angry memory leaks
-	if(state->ESP != 0)
+	if(state->RSP != 0)
 		//The magic number 5 comes from the fact that there are five decrements when the thread gets started
-		delete[] (unsigned int *)(state->ESP - (0x1000 - 5 * 0x4));
+		delete[] (unsigned int *)(state->RSP - (0x1000 - 5 * 0x4));
 }
 
 void Thread::Start(void **args, unsigned int argCount)
@@ -112,8 +106,8 @@ void Thread::Start(void **args, unsigned int argCount)
 	* http://unixwiz.net/techtips/win32-callconv-asm.html
 	* I add 0x1000 because ESP and EBP point to the end of the stack
 	*/
-	unsigned int *stackState = (unsigned int *)(new(parent) unsigned int[0x1000]) + 0x1000;
-	unsigned int virtualMapping[2] = { 0, 0 };
+	virtAddress *stackState = (virtAddress *)(new(parent) unsigned int[0x1000]) + 0x1000;
+	uint64 virtualMapping[2] = { 0, 0 };
 	//This criteria might go strange once I introduce multiple process
 	bool userModeActive = parent->threads->GetCount() != 0;
 
@@ -123,22 +117,22 @@ void Thread::Start(void **args, unsigned int argCount)
 		//The first things to go on the stack are the arguments
 		//The below code is quite messy, but I don't know any better way to do it
 		for(unsigned int i = argCount; i > 0; i--)
-		    *--stackState = (unsigned int)(args[i - 1]);
+		    *--stackState = (virtAddress)(args[i - 1]);
 		if(! userModeActive)
-			*--stackState = (unsigned int)state;
+			*--stackState = (virtAddress)state;
 
 		//After that is the return address, which will basically just use a system call to kill the process
-		*--stackState = (unsigned int)&Thread::returnMethod;
+		*--stackState = (virtAddress)&Thread::returnMethod;
 
 		//Below that is the current EIP
-		*--stackState = userModeActive ? state->EntryPoint : (unsigned int)&Thread::ring3Start;
+		*--stackState = (virtAddress)(userModeActive ? state->EntryPoint : (virtAddress)&Thread::ring3Start);
 		//The current EBP (0) goes at the bottom of the stack
 		*--stackState = 0;
 
-		state->EIP = userModeActive ? state->EntryPoint : (unsigned int)&Thread::ring3Start;
+		state->RIP = userModeActive ? state->EntryPoint : (virtAddress)&Thread::ring3Start;
 
-		state->ESP = state->EBP = userModeActive ? (unsigned int)(stackState + 2) : (unsigned int)stackState;
-		state->UserESP = state->ESP;
+		state->RSP = state->RBP = userModeActive ? (virtAddress)(stackState + 2) : (virtAddress)stackState;
+		state->UserESP = state->RSP;
 	}
 	else
         //Not the best solution, but I don't know how to invoke an overloaded delete[] operator
@@ -148,11 +142,11 @@ void Thread::Start(void **args, unsigned int argCount)
 	* I'm not going to make the entire kernel available to user-space, but I will expose the two pages
 	* containing the routine which drops to ring 3. There's very little it can do to anything there anyway
 	*/
-	virtualMapping[0] = MemoryManagement::Virtual::RetrieveMapping((void *)&Thread::returnMethod, &virtualMapping[1]);
-	MemoryManagement::Virtual::MapMemory(virtualMapping[0], (unsigned int)&Thread::returnMethod, virtualMapping[1] | MemoryManagement::x86::PageDirectoryFlags::UserAccessible);
+	virtualMapping[0] = (uint64)MemoryManagement::Virtual::RetrieveMapping((virtAddress)&Thread::returnMethod, &virtualMapping[1]);
+	MemoryManagement::Virtual::MapMemory(virtualMapping[0], (virtAddress)&Thread::returnMethod, virtualMapping[1] | MemoryManagement::x86::PageDirectoryFlags::UserAccessible);
 
-	virtualMapping[0] = MemoryManagement::Virtual::RetrieveMapping((void *)((unsigned int)&Thread::returnMethod + PageSize), &virtualMapping[1]);
-	MemoryManagement::Virtual::MapMemory(virtualMapping[0], (unsigned int)&Thread::returnMethod + PageSize, virtualMapping[1] | MemoryManagement::x86::PageDirectoryFlags::UserAccessible);
+	virtualMapping[0] = (uint64)MemoryManagement::Virtual::RetrieveMapping((virtAddress)&Thread::returnMethod + PageSize, &virtualMapping[1]);
+	MemoryManagement::Virtual::MapMemory(virtualMapping[0], (virtAddress)&Thread::returnMethod + PageSize, virtualMapping[1] | MemoryManagement::x86::PageDirectoryFlags::UserAccessible);
 	//Now that the stack is set up, the parent process just needs to know about its new thread
 	parent->threads->Add(this);
 	//If we're the parent's first thread, then the parent needs to be told that it's got a thread
@@ -164,16 +158,16 @@ void Thread::Start(void **args, unsigned int argCount)
 
 void Thread::SetState(StackStates::x86Stack *st)
 {
-	unsigned int esp = state->ESP;
-	unsigned int ebp = state->EBP;
+	cpuRegister rsp = state->RSP;
+	cpuRegister rbp = state->RBP;
 
 	state = st;
-	if(st->ESP != 0)
+	if(st->RSP != 0)
 		customState = true;
 	else
 	{
-		st->ESP = esp;
-		st->EBP = ebp;
+		st->RSP = rsp;
+		st->RBP = rbp;
 	}
 }
 
@@ -202,9 +196,9 @@ void Thread::Wake()
 	sleeping = false;
 }
 
-unsigned int Thread::GetEIP()
+virtAddress Thread::GetEIP()
 {
-	return state->EIP;
+	return state->RIP;
 }
 
 unsigned int Thread::GetStatus()
@@ -220,7 +214,7 @@ unsigned int Thread::GetStatus()
 	return status;
 }
 
-unsigned int Thread::GetEntryPoint()
+virtAddress Thread::GetEntryPoint()
 {
 	return state->EntryPoint;
 }

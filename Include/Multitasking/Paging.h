@@ -1,6 +1,8 @@
 #ifndef Paging_H
 #define Paging_H
 
+#include <Typedefs.h>
+
 #define PageMask	0xFFFFF000
 #define PageSize	0x1000
 
@@ -27,7 +29,7 @@ namespace MemoryManagement
 			const unsigned int CopyOnWrite = 0x200;
 		}
 		//Various paging stuff goes here
-		typedef unsigned int PageDirectory;
+		typedef physAddress PageDirectory;
 	}
 
 	class Virtual
@@ -46,14 +48,14 @@ namespace MemoryManagement
 		static x86::PageDirectory ClonePageDirectory(x86::PageDirectory dir = kernel, bool usePosixSemantics = false);
 		static void SwitchPageDirectory(x86::PageDirectory dir);
 
-		static void MapMemory(unsigned int src, unsigned int dest, unsigned int flags);
-		static void MapMemory(unsigned int src, unsigned int flags);
-		static void EraseMapping(void *mem);
-		static unsigned int RetrieveMapping(void *mem, unsigned int *flags);
+		static void MapMemory(physAddress src, virtAddress dest, uint64 flags);
+		static void MapMemory(physAddress src, uint64 flags);
+		static void EraseMapping(virtAddress mem);
+		static physAddress RetrieveMapping(virtAddress mem, uint64 *flags);
 
 		//This method will copy [length] bytes from [source] in this addreses space to [destination] in the [addressSpace] address space
 		//It's used by message passing and when creating a new process from a memory range
-		static void CopyToAddressSpace(unsigned int source, unsigned int length, unsigned int destination, x86::PageDirectory addressSpace,
+		static void CopyToAddressSpace(virtAddress source, unsigned int length, unsigned int destination, x86::PageDirectory addressSpace,
 			bool addressMustExist = true, bool userMode = true);
 	};
 }

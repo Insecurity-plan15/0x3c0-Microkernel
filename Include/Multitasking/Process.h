@@ -70,7 +70,7 @@ public:
 	char *GetName();		//A non-unique name which identifies a process to a user
 	void SetName(char *n);
 
-	unsigned int GetProcessId();	//This is a unique value - the virtual address of the process
+	uint64 GetProcessId();	//This is a unique value - the virtual address of the process
 
 	LinkedList<Thread *> *GetThreads();	//A list of all threads (including v86 ones) in a process
 

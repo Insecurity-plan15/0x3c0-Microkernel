@@ -6,10 +6,10 @@ extern "C"
 {
 	void invokeConstructors()
 	{
-		extern unsigned int constructorStart;
-		extern unsigned int constructorEnd;
+		extern virtAddress constructorStart;
+		extern virtAddress constructorEnd;
 
-		for(unsigned int *ctor = &constructorStart; ctor < &constructorEnd; ctor++)
+		for(virtAddress *ctor = &constructorStart; ctor < &constructorEnd; ctor++)
 			((void (*)())*ctor)();
 	}
 

@@ -28,22 +28,22 @@ unsigned int Scheduler::getCPUIdentifier()
 
 void Scheduler::SetupStack()
 {
-	void *page = 0;
+	physAddress page = 0;
 	unsigned int id = getCPUIdentifier();
-	unsigned int stackLocation = 0xF0400000 + (PageSize * id);
-	unsigned int mappingFlags = 0;
+	virtAddress stackLocation = 0xF0400000 + (PageSize * id);
+	uint64 mappingFlags = 0;
 
     //Make certain that the stack isn't already mapped
-    MemoryManagement::Virtual::RetrieveMapping((void *)stackLocation, &mappingFlags);
+    MemoryManagement::Virtual::RetrieveMapping(stackLocation, &mappingFlags);
 
     //If it's present, I've already called SetupStack for this logical core, and don't need to do anything
     if((mappingFlags & MemoryManagement::x86::PageDirectoryFlags::Present) != 0)
         return;
     page = MemoryManagement::Physical::PageAllocator::AllocatePage(false);
-	MemoryManagement::Virtual::MapMemory((unsigned int)page, stackLocation, MemoryManagement::x86::PageDirectoryFlags::ReadWrite);
+	MemoryManagement::Virtual::MapMemory((physAddress)page, stackLocation, MemoryManagement::x86::PageDirectoryFlags::ReadWrite);
 	//Adding PageSize will push the stack into the next page. That isn't mapped.
 	//I subtract four because the stack needs to be aligned on a DWORD boundary
-	setKernelStack(stackLocation - 4);
+	setKernelStack(stackLocation - sizeof(virtAddress));
 }
 
 Scheduler::Scheduler(Process *first)
@@ -149,35 +149,35 @@ void Scheduler::YieldTo(Process *p, StackStates::Interrupt *stack)
 		currentThread->state->CS = stack->CS;
 		currentThread->state->DS = stack->DS;
 
-		currentThread->state->EAX = stack->EAX;
-		currentThread->state->EBX = stack->EBX;
-		currentThread->state->ECX = stack->ECX;
-		currentThread->state->EDX = stack->EDX;
+		currentThread->state->RAX = stack->RAX;
+		currentThread->state->RBX = stack->RBX;
+		currentThread->state->RCX = stack->RCX;
+		currentThread->state->RDX = stack->RDX;
 
-		currentThread->state->ESP = stack->ESP;
-		currentThread->state->EBP = stack->EBP;
+		currentThread->state->RSP = stack->RSP;
+		currentThread->state->RBP = stack->RBP;
 		currentThread->state->UserESP = stack->UserESP;
 
-		currentThread->state->EDI = stack->EDI;
-		currentThread->state->ESI = stack->ESI;
+		currentThread->state->RDI = stack->RDI;
+		currentThread->state->RSI = stack->RSI;
 
 		currentThread->state->EFLAGS = stack->EFLAGS;
 
-		currentThread->state->EIP = stack->EIP;
+		currentThread->state->RIP = stack->RIP;
 	}
 	else if(currentThread != 0)
 	{
 		//If there's no stack, and a thread exists to store, then get the values directly from there
-		asm volatile ("mov %%eax, %0" : "=r"(currentThread->state->EAX));
-		asm volatile ("mov %%ebx, %0" : "=r"(currentThread->state->EBX));
-		asm volatile ("mov %%ecx, %0" : "=r"(currentThread->state->ECX));
-		asm volatile ("mov %%edx, %0" : "=r"(currentThread->state->EDX));
+		asm volatile ("mov %%rax, %0" : "=r"(currentThread->state->RAX));
+		asm volatile ("mov %%rbx, %0" : "=r"(currentThread->state->RBX));
+		asm volatile ("mov %%rcx, %0" : "=r"(currentThread->state->RCX));
+		asm volatile ("mov %%rdx, %0" : "=r"(currentThread->state->RDX));
 
-		asm volatile ("mov %%edi, %0" : "=r"(currentThread->state->EDI));
-		asm volatile ("mov %%esi, %0" : "=r"(currentThread->state->ESI));
+		asm volatile ("mov %%rdi, %0" : "=r"(currentThread->state->RDI));
+		asm volatile ("mov %%rsi, %0" : "=r"(currentThread->state->RSI));
 
-		asm volatile ("mov %%esp, %0" : "=r"(currentThread->state->ESP));
-		asm volatile ("mov %%ebp, %0" : "=r"(currentThread->state->EBP));
+		asm volatile ("mov %%rsp, %0" : "=r"(currentThread->state->RSP));
+		asm volatile ("mov %%rbp, %0" : "=r"(currentThread->state->RBP));
 	}
 	//Switch to the next thread
 	currentThread = currentProcess->currentThread->Value;
@@ -188,36 +188,36 @@ void Scheduler::YieldTo(Process *p, StackStates::Interrupt *stack)
 		stack->DS = currentThread->state->DS;
 		//I don't alter SS because every process' stack segment is the same
 
-		stack->EAX = currentThread->state->EAX;
-		stack->EBX = currentThread->state->EBX;
-		stack->ECX = currentThread->state->ECX;
-		stack->EDX = currentThread->state->EDX;
+		stack->RAX = currentThread->state->RAX;
+		stack->RBX = currentThread->state->RBX;
+		stack->RCX = currentThread->state->RCX;
+		stack->RDX = currentThread->state->RDX;
 
-		stack->ESP = currentThread->state->ESP;
-		stack->EBP = currentThread->state->EBP;
+		stack->RSP = currentThread->state->RSP;
+		stack->RBP = currentThread->state->RBP;
 		stack->UserESP = currentThread->state->UserESP;
 
-		stack->EDI = currentThread->state->EDI;
-		stack->ESI = currentThread->state->ESI;
+		stack->RDI = currentThread->state->RDI;
+		stack->RSI = currentThread->state->RSI;
 
 		stack->EFLAGS = currentThread->state->EFLAGS;
 
-		stack->EIP = currentThread->state->EIP;
+		stack->RIP = currentThread->state->RIP;
 	}
 	else
 	{
 		//There's no need to switch the segment registers because they should remain constant across switches.
 		//However, when multitasking is just getting started, I will need to switch to a secondary, ring 3 task
-		asm volatile ("mov %0, %%eax" : : "r"(currentThread->state->EAX));
-		asm volatile ("mov %0, %%ebx" : : "r"(currentThread->state->EBX));
-		asm volatile ("mov %0, %%ecx" : : "r"(currentThread->state->ECX));
-		asm volatile ("mov %0, %%edx" : : "r"(currentThread->state->EDX));
+		asm volatile ("mov %0, %%rax" : : "r"(currentThread->state->RAX));
+		asm volatile ("mov %0, %%rbx" : : "r"(currentThread->state->RBX));
+		asm volatile ("mov %0, %%rcx" : : "r"(currentThread->state->RCX));
+		asm volatile ("mov %0, %%rdx" : : "r"(currentThread->state->RDX));
 
-		asm volatile ("mov %0, %%edi" : : "r"(currentThread->state->EDI));
-		asm volatile ("mov %0, %%esi" : : "r"(currentThread->state->ESI));
+		asm volatile ("mov %0, %%rdi" : : "r"(currentThread->state->RDI));
+		asm volatile ("mov %0, %%rsi" : : "r"(currentThread->state->RSI));
 
-		asm volatile ("mov %0, %%esp" : : "r"(currentThread->state->ESP));
-		asm volatile ("mov %0, %%ebp" : : "r"(currentThread->state->EBP));
+		asm volatile ("mov %0, %%rsp" : : "r"(currentThread->state->RSP));
+		asm volatile ("mov %0, %%rbp" : : "r"(currentThread->state->RBP));
 		//There's no need to manipulate EFLAGS, EIP et al because when the stack registers get changed, EIP is found there
 	}
 	//All these changes get pushed back onto the stack when the interrupt handler completes, changing to another thread

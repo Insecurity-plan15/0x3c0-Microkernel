@@ -60,7 +60,7 @@ void DriverInterruptSource::receive(StackStates::Interrupt *stack)
 	if(driver != 0)
 	{
 		//I allocate the message in the driver's parent's address space
-		Message *m = new Message(stack, sizeof(StackStates::Interrupt), 0, driver->Parent, MessageCodes::Drivers::InterruptReceived, 0);
+		Message *m = new Message((virtAddress)stack, sizeof(StackStates::Interrupt), 0, driver->Parent, MessageCodes::Drivers::InterruptReceived, 0);
 
 		if(sch != 0 && sch->TimerInUse(driver))
 			sch->Yield(stack);

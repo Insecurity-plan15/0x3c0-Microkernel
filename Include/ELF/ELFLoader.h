@@ -9,7 +9,7 @@ namespace ELF
 	{
 	friend class Process;
 	public:
-		ELFLoader(void *base, unsigned int sz);
+		ELFLoader(virtAddress base, unsigned int sz);
 		~ELFLoader();
 		FileStructures::SectionHeader *GetSectionHeader(unsigned int idx);
 		void Start(void *parameter);

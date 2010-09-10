@@ -13,10 +13,10 @@ namespace SystemCalls
         {
             struct Message
             {
-                unsigned int Data;
+                virtAddress Data;
                 unsigned int Length;
                 unsigned int Code;
-                unsigned int Source;
+                virtAddress Source;
                 unsigned int MessageChain;
             } __attribute__((packed));
 
@@ -82,7 +82,7 @@ namespace SystemCalls
         private:
             Internal();
             ~Internal();
-            static unsigned int isAddressValid(unsigned int address, bool checkUserMode);
+            static unsigned int isAddressValid(virtAddress address, bool checkUserMode);
         public:
             SystemCallMethod(CreateThread);
             SystemCallMethod(KillThread);

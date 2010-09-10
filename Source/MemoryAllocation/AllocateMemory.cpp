@@ -136,8 +136,8 @@ int Heap::liballoc_unlock()
 
 void *Heap::liballoc_alloc(size_t pages)
 {
-	void *p = 0;
-	unsigned int formerHeapEnd = heapEnd;
+	physAddress p = 0;
+	virtAddress formerHeapEnd = heapEnd;
 
 	//If the total pages would make the heap too large, then they shouldn't be allocated
 	if(heapEnd + (pages * PageSize) > heapMax)
@@ -158,16 +158,16 @@ void *Heap::liballoc_alloc(size_t pages)
 int Heap::liballoc_free(void *p, size_t pages)
 {
 	//For consistency, I'll start at the end of the range and sequentially unmap the pages
-	void *pageEnd = (void *)((unsigned int)p + pages * PageSize);
+	virtAddress pageEnd = (virtAddress)p + pages * PageSize;
 
-	for(void *i = pageEnd; (unsigned int)i > (unsigned int)p; i = (void *)((unsigned int)i - PageSize))
+	for(virtAddress i = pageEnd; i > (virtAddress)p; i -= PageSize)
 	{
-		unsigned int phys = Virtual::RetrieveMapping(i, 0);
+		physAddress phys = Virtual::RetrieveMapping(i, 0);
 
-		Physical::PageAllocator::FreePage((void *)phys);
+		Physical::PageAllocator::FreePage(phys);
 		Virtual::EraseMapping(i);
 	}
-	if((unsigned int)p + pages * PageSize == heapEnd)
+	if((virtAddress)p + pages * PageSize == heapEnd)
 		heapEnd -= (pages * PageSize);
 	return 0;
 }
@@ -230,13 +230,13 @@ Heap::~Heap()
 
 	MemoryManagement::Virtual::SwitchPageDirectory(pageDirectory);
 	//When the heap is destroyed, all the allocations go with it
-	for(unsigned int i = heapStart; i < heapEnd; i += PageSize)
+	for(virtAddress i = heapStart; i < heapEnd; i += PageSize)
 	{
-		unsigned int physAddress = Virtual::RetrieveMapping((void *)i, 0);
+		physAddress physicalAddress = Virtual::RetrieveMapping(i, 0);
 
 		//Free the physical addresses to avoid memory leaks, and the virtual mappings to remain consistent
-		Physical::PageAllocator::FreePage((void *)physAddress);
-		Virtual::EraseMapping((void *)i);
+		Physical::PageAllocator::FreePage(physicalAddress);
+		Virtual::EraseMapping(i);
 	}
 	MemoryManagement::Virtual::SwitchPageDirectory(pd);
 }
@@ -704,7 +704,7 @@ Heap *Heap::GetKernelHeap()
 	extern unsigned int kernelHeapStart;
 
 	if(kernelHeap == 0)
-		kernelHeap = new((unsigned int)&kernelHeapStart) Heap(KernelHeapStart, KernelHeapEnd, true,
+		kernelHeap = new((virtAddress)&kernelHeapStart) Heap(KernelHeapStart, KernelHeapEnd, true,
             MemoryManagement::Virtual::GetPageDirectory());
 	return kernelHeap;
 }

@@ -65,21 +65,21 @@ x86::PageDirectory Virtual::ClonePageDirectory(x86::PageDirectory dir, bool useP
 	*/
 
 	//Allocate a physical page for the page directory.
-	unsigned int pageDirectoryPhys = (unsigned int)Physical::PageAllocator::AllocatePage(false);
-	unsigned int *pageDirectoryVirt = (unsigned int *)0xFFBFD000;
+	physAddress pageDirectoryPhys = Physical::PageAllocator::AllocatePage(false);
+	virtAddress *pageDirectoryVirt = (virtAddress *)0xFFBFD000;
 	//The kernel boundary is the page directory entry index of the 3.75 GiB mark
-	unsigned int kernelBoundary = 0xF0000000 >> 22;
-	unsigned int *cloneDirectory = (unsigned int *)dir;
+	virtAddress kernelBoundary = 0xF0000000 >> 22;
+	physAddress *cloneDirectory = (physAddress *)dir;
 
 	//Map the page directory into the address space so it can be accessed
 	//This address is the last address guaranteed to be free
-	MapMemory((unsigned int)pageDirectoryPhys, (unsigned int)pageDirectoryVirt, x86::PageDirectoryFlags::ReadWrite);
+	MapMemory(pageDirectoryPhys, (virtAddress)pageDirectoryVirt, x86::PageDirectoryFlags::ReadWrite);
 	//dir is a physical address, and so needs a temporary mapping to access
-	MapMemory((unsigned int)cloneDirectory, 0xFFBFC000, x86::PageDirectoryFlags::ReadWrite);
-	cloneDirectory = (unsigned int *)0xFFBFC000;
+	MapMemory((physAddress)cloneDirectory, 0xFFBFC000, x86::PageDirectoryFlags::ReadWrite);
+	cloneDirectory = (physAddress *)0xFFBFC000;
 
 		//I subtract one because there's no point setting the final page directory entry twice
-		for(unsigned int i = 0; i < 1024 - 1; i++)
+		for(uint32 i = 0; i < 1024 - 1; i++)
 		{
 			//This relies on the fact that the temporary mappings I create are sequential in memory
 			if((i >= (0xFFBFB000 >> 22)) && (i <= (0xFFBFF000 >> 22)))
@@ -88,25 +88,25 @@ x86::PageDirectory Virtual::ClonePageDirectory(x86::PageDirectory dir, bool useP
 				pageDirectoryVirt[i] = cloneDirectory[i];
             else if(usePosixSemantics && dir == current)
             {
-                unsigned int address = 0;
+                virtAddress address = 0;
 
                 if((cloneDirectory[i] & x86::PageDirectoryFlags::Present) == 0)
                     continue;
                 //I have serious doubts about the suitability of fork(), but it's necessary for partial POSIX compliance
                 for(unsigned int j = 0; j < 1024; j++)
                 {
-                    unsigned int *tableAddress = (unsigned int *)(cloneDirectory[i] & PageMask);
+                    physAddress *tableAddress = (physAddress *)(cloneDirectory[i] & PageMask);
 
                     //Set up a short mapping, designed to check whether the page table entry is present.
                     //If it isn't, I can save myself some time and ignore it
-                    MapMemory((unsigned int)tableAddress, 0xFFBFB000, x86::PageDirectoryFlags::ReadWrite);
-                        tableAddress = (unsigned int *)0xFFBFB000;
+                    MapMemory((physAddress)tableAddress, 0xFFBFB000, x86::PageDirectoryFlags::ReadWrite);
+                        tableAddress = (physAddress *)0xFFBFB000;
                         if((tableAddress[j] & x86::PageDirectoryFlags::Present) == 0)
                         {
-                            EraseMapping((void *)tableAddress);
+                            EraseMapping((physAddress)tableAddress);
                             continue;
                         }
-                    EraseMapping((void *)tableAddress);
+                    EraseMapping((virtAddress)tableAddress);
                     address = (i << 22) | (j << 12);
                     //Do the actual copying, from the same position in memory across page directories
                     CopyToAddressSpace(address, PageSize, address, pageDirectoryPhys, false, true);
@@ -120,9 +120,9 @@ x86::PageDirectory Virtual::ClonePageDirectory(x86::PageDirectory dir, bool useP
 		pageDirectoryVirt[1023] = pageDirectoryPhys | x86::PageDirectoryFlags::Present | x86::PageDirectoryFlags::ReadWrite;
 
 	//Get rid of the temporary mappings
-	EraseMapping((void *)pageDirectoryVirt);
+	EraseMapping((virtAddress)pageDirectoryVirt);
 	//Remove the mapping of the original directory
-	EraseMapping((void *)cloneDirectory);
+	EraseMapping((virtAddress)cloneDirectory);
 	return (x86::PageDirectory)pageDirectoryPhys;
 }
 
@@ -135,34 +135,34 @@ void Virtual::SwitchPageDirectory(x86::PageDirectory dir)
 }
 
 //src is a physical address. dest is a virtual address. flags controls things like present, COW, ring0
-void Virtual::MapMemory(unsigned int src, unsigned int dest, unsigned int flags)
+void Virtual::MapMemory(physAddress src, virtAddress dest, uint64 flags)
 {
 	src &= PageMask;	//Page-align src, because it's just easier to do now
 	dest &= PageMask;	//dest should already be page-aligned, but lets make certain
 	flags &= 0xFFF;		//flags will be the bottom bit of our page directory entry, so it can't overwrite anything
 
 	//The recursive page mapping means that the page directory location is fixed
-	unsigned int *pageDirectories = (unsigned int *)PageDirectoryLocation;
+	virtAddress *pageDirectories = (virtAddress *)PageDirectoryLocation;
 	//The directory contains a list of structures which map virtual addresses to physical
 	unsigned int directoryIndex = dest >> 22;
 	//Shift the address right 12 bits and mask out the directory index to get the page table index
 	unsigned int tableIndex = dest >> 12;
 	//Contains the page tables
-	unsigned int *pageTables = (unsigned int *)PageTableLocation;
+	virtAddress *pageTables = (virtAddress *)PageTableLocation;
 
 	//To save space, we don't allocate a page for every page directory. Otherwise, we would use (4 KiB * 1024) = 4 MiB
 	//A zeroed page table means that we've not used this 4 MiB region for a while
 	if(pageDirectories[directoryIndex] == 0)
 	{
-		void *pg = Physical::PageAllocator::AllocatePage();
+		physAddress pg = Physical::PageAllocator::AllocatePage();
 
 		if(pg == 0)
-			asm volatile ("cli; hlt" : : "a"(0xDEAD), "b"(0xC0DE));
+			asm volatile ("cli; hlt" : : "a"(0xDEAD));
 		/*
 		* Note that I set the user-accessible flag. This is perfectly safe - the Intel manuals state that a user process
 		* can only access an address if every paging structure has the user-accessible flag set. The page tables have the control here
 		*/
-		pageDirectories[directoryIndex] = (unsigned int)pg | x86::PageDirectoryFlags::Present | x86::PageDirectoryFlags::ReadWrite |
+		pageDirectories[directoryIndex] = pg | x86::PageDirectoryFlags::Present | x86::PageDirectoryFlags::ReadWrite |
 			x86::PageDirectoryFlags::UserAccessible;
 
 		//All the page tables are mapped sequentially in memory
@@ -170,20 +170,20 @@ void Virtual::MapMemory(unsigned int src, unsigned int dest, unsigned int flags)
 	pageTables[tableIndex] = src | flags | x86::PageDirectoryFlags::Present;
 }
 
-void Virtual::MapMemory(unsigned int src, unsigned int flags)
+void Virtual::MapMemory(physAddress src, uint64 flags)
 {
 	MapMemory(src, src, flags);
 }
 
-void Virtual::EraseMapping(void *mem)
+void Virtual::EraseMapping(virtAddress mem)
 {
-	mem = (void *)((unsigned int)mem & PageMask);
+	mem = mem & PageMask;
 	//Recursive page mapping means that the page directories are at a fixed location
-	unsigned int *pageDirectories = (unsigned int *)PageDirectoryLocation;
-	unsigned int directoryIndex = (unsigned int)mem >> 22;
+	virtAddress *pageDirectories = (virtAddress *)PageDirectoryLocation;
+	unsigned int directoryIndex = mem >> 22;
 	//Ditto with page tables
-	unsigned int *pageTables = (unsigned int *)PageTableLocation;
-	unsigned int tableIndex = (unsigned int)mem >> 12;
+	virtAddress *pageTables = (virtAddress *)PageTableLocation;
+	unsigned int tableIndex = mem >> 12;
 
 	pageTables[tableIndex] = 0;
 	asm volatile ("invlpg (%0)" : : "a"(mem));
@@ -196,28 +196,28 @@ void Virtual::EraseMapping(void *mem)
 			return;
 	}
 	//Mark the page that the page directory entry in as free and remove it from the page tables
-	Physical::PageAllocator::FreePage((void *)(pageDirectories[directoryIndex] & PageMask));
+	Physical::PageAllocator::FreePage((physAddress)(pageDirectories[directoryIndex] & PageMask));
 	pageDirectories[directoryIndex] = 0;
 }
 
 //mem is a virtual address
-unsigned int Virtual::RetrieveMapping(void *mem, unsigned int *flags)
+physAddress Virtual::RetrieveMapping(virtAddress mem, uint64 *flags)
 {
 	//Bits 22:31 of a virtual address are the page directory index
-	unsigned int directoryIndex = ((unsigned int)mem >> 22);
+	uint32 directoryIndex = mem >> 22;
 	//The middle 10 bits of a virtual address are the page table index
-	unsigned int tableIndex = (unsigned int)mem >> 12;
+	uint32 tableIndex = mem >> 12;
 	//The page directories are always mapped to PageDirectoryLocation
-	unsigned int *pageDirectories = (unsigned int *)PageDirectoryLocation;
-	unsigned int *pageTables = (unsigned int *)PageTableLocation;
+	virtAddress *pageDirectories = (virtAddress *)PageDirectoryLocation;
+	virtAddress *pageTables = (virtAddress *)PageTableLocation;
 	//The bottom 12 bits are the offset within a page
-	unsigned int offset = (unsigned int)mem & 0xFFF;
+	virtAddress offset = (virtAddress)mem & 0xFFF;
 
 	if((pageDirectories[directoryIndex] != 0) && (pageTables[tableIndex] != 0))
 	{
 		if(flags != 0)
 			*flags = pageTables[tableIndex] & ~PageMask;
-		return (pageTables[tableIndex] & PageMask) | offset;
+		return (physAddress)((pageTables[tableIndex] & PageMask) | offset);
 	}
 	else
 	{
@@ -231,7 +231,7 @@ unsigned int Virtual::RetrieveMapping(void *mem, unsigned int *flags)
 * source is a valid virtual address. destination is not, and so will require a mapping to the underlying physical address to be created
 * in the current virtual address space
 */
-void Virtual::CopyToAddressSpace(unsigned int source, unsigned int length, unsigned int destination, x86::PageDirectory addressSpace,
+void Virtual::CopyToAddressSpace(virtAddress source, unsigned int length, unsigned int destination, x86::PageDirectory addressSpace,
 	bool addressMustExist, bool userMode)
 {
 	//Page directory index of the destination page
@@ -239,70 +239,70 @@ void Virtual::CopyToAddressSpace(unsigned int source, unsigned int length, unsig
 	//See above, but page table index
 	unsigned int destinationTableIndex = (destination >> 12) & 0x3FF;
 	//This is the virtual address of addressSpace
-	unsigned int *pageDirVirt = (unsigned int *)0xFFBFD000;
+	virtAddress *pageDirVirt = (virtAddress *)0xFFBFD000;
 	//When I access the new virtual address, I will want an offset to work with
 	unsigned int offset = 0;
 
-	//Map the foreign page directory into the host address space as a fixed addrss
-	MapMemory(addressSpace, (unsigned int)pageDirVirt, x86::PageDirectoryFlags::ReadWrite);
-		for(unsigned int i = source & PageMask; i <= ((source + length) & PageMask); i += PageSize)
+	//Map the foreign page directory into the host address space as a fixed address
+	MapMemory(addressSpace, (virtAddress)pageDirVirt, x86::PageDirectoryFlags::ReadWrite);
+		for(virtAddress i = source & PageMask; i <= ((source + length) & PageMask); i += PageSize)
 		{
 			//bytesToCopy is the total number of bytes in the memory block, subtract the amount that's actually been transferred
 			//If the remainder is above PageSize, then I should cap it for the sake of efficiency
 			unsigned int bytesToCopy = length - (i - (source & PageMask));
-			unsigned int adjustedDestination = i - (source & PageMask) + destination;
-			unsigned int physicalAddress;
+			virtAddress adjustedDestination = i - (source & PageMask) + destination;
+			physAddress physicalAddress;
 			//This is the actual page directory entry
-			unsigned int *pageTable;
-			unsigned int *page;
+			virtAddress *pageTable;
+			virtAddress *page;
 
 			offset = i - (source & PageMask);
 			if(bytesToCopy > PageSize)
 				bytesToCopy = PageSize;
 			destinationDirectoryIndex = adjustedDestination >> 22;
 			destinationTableIndex = (adjustedDestination >> 12) & 0x3FF;
-			pageTable = (unsigned int *)pageDirVirt[destinationDirectoryIndex];
-			if(((unsigned int)pageTable & x86::PageDirectoryFlags::Present) != x86::PageDirectoryFlags::Present)
+			pageTable = (virtAddress *)pageDirVirt[destinationDirectoryIndex];
+			if(((virtAddress)pageTable & x86::PageDirectoryFlags::Present) != x86::PageDirectoryFlags::Present)
 			{
 				//If the address must be present in the destination virtual address space, then there's something wrong. Die quickly
 				if(addressMustExist)
 					break;
 				//Every page directory entry is user accessible. Page table entries however, aren't
-				pageDirVirt[destinationDirectoryIndex] = (unsigned int)Physical::PageAllocator::AllocatePage(false) |
+				pageDirVirt[destinationDirectoryIndex] = (virtAddress)Physical::PageAllocator::AllocatePage(false) |
 					x86::PageDirectoryFlags::Present | x86::PageDirectoryFlags::ReadWrite | x86::PageDirectoryFlags::UserAccessible;
-				pageTable = (unsigned int *)pageDirVirt[destinationDirectoryIndex];
+				pageTable = (virtAddress *)pageDirVirt[destinationDirectoryIndex];
 			}
 			//Remove the flags to get a consistent address
-			pageTable = (unsigned int *)((unsigned int)pageTable & PageMask);
+			pageTable = (virtAddress *)((virtAddress)pageTable & PageMask);
 			//By now, the page table is definitely present. Proceed to examine the necessary page table entry
-			MapMemory((unsigned int)pageTable, 0xFFBFE000, x86::PageDirectoryFlags::ReadWrite);
-				pageTable = (unsigned int *)0xFFBFE000;
+			MapMemory((physAddress)pageTable, 0xFFBFE000, x86::PageDirectoryFlags::ReadWrite);
+				pageTable = (virtAddress *)0xFFBFE000;
 				//Get the right page table entry from the index
-				page = (unsigned int *)pageTable[destinationTableIndex];
-				if(((unsigned int)page & x86::PageDirectoryFlags::Present) != x86::PageDirectoryFlags::Present)
+				page = (virtAddress *)pageTable[destinationTableIndex];
+				if(((virtAddress)page & x86::PageDirectoryFlags::Present) != x86::PageDirectoryFlags::Present)
 				{
-					unsigned int flags = x86::PageDirectoryFlags::Present | x86::PageDirectoryFlags::ReadWrite;
+					uint64 flags = x86::PageDirectoryFlags::Present | x86::PageDirectoryFlags::ReadWrite;
 					//If it isn't present when I expect it to be, clean up and run
 					if(addressMustExist)
 					{
-						EraseMapping((void *)pageTable);
+						EraseMapping((virtAddress)pageTable);
 						break;
 					}
 					//Passing user-mode indicates that the memory should not just be accessible by the kernel
 					//The parameter, along with [addressMustExist], simplifies matter by using the same method for process creation and IPC
 					if(userMode)
 						flags |= x86::PageDirectoryFlags::UserAccessible;
-					pageTable[destinationTableIndex] = (unsigned int)Physical::PageAllocator::AllocatePage(false) | flags;
-					page = (unsigned int *)pageTable[destinationTableIndex];
+					pageTable[destinationTableIndex] = Physical::PageAllocator::AllocatePage(false) | flags;
+					page = (virtAddress *)pageTable[destinationTableIndex];
 				}
 
 				//At the moment, the offset within the page doesn't really matter. It'll be page-aligned anyway
-				physicalAddress = (unsigned int)page & PageMask;
+				physicalAddress = (physAddress)page & PageMask;
 				//I have the physical address of the place I need to map it to. Now, just map it in and copy away
 				MapMemory(physicalAddress, 0xFFBFF000, x86::PageDirectoryFlags::ReadWrite);
 					Memory::Copy((void *)(0xFFBFF000 + offset), (const void *)source, bytesToCopy);
-				EraseMapping((void *)0xFFBFF000);
-			EraseMapping((void *)pageTable);
+				EraseMapping(0xFFBFF000);
+			EraseMapping((virtAddress)pageTable);
 		}
-	EraseMapping((void *)pageDirVirt);
+	EraseMapping((virtAddress)pageDirVirt);
 }

@@ -28,10 +28,10 @@ SystemCallDefinition(fork)
     */
     newThread->SetState( currentThread->GetState() );
     //As per POSIX specifications, fork() returns 0 in the child process
-    newThread->GetState()->EAX = 0;
+    newThread->GetState()->RAX = 0;
     //Start the thread, with no arguments - they'd be ignored anyway
     newThread->Start(0, 0);
-    return (unsigned int)forked;
+    return (virtAddress)forked;
 }
 
 SystemCallDefinition(execve)
@@ -58,22 +58,22 @@ SystemCallInterrupt::~SystemCallInterrupt()
 
 void SystemCallInterrupt::receive(StackStates::Interrupt *stack)
 {
-    unsigned int eip = stack->EIP;
-	unsigned int eax = 0;
+    unsigned int rip = stack->RIP;
+	unsigned int rax = 0;
 
-	if(stack->EDX >= (sizeof(calls) / sizeof(SystemCall)))
+	if(stack->RDX >= (sizeof(calls) / sizeof(SystemCall)))
 	{
 		//Somebody's trying to mess up the kernel. Stop them
-		stack->EAX = 0xFFFFFFFF;
+		stack->RAX = 0xFFFFFFFF;
 		return;
 	}
-	SystemCall sc = calls[stack->EDX];
+	SystemCall sc = calls[stack->RDX];
 
 	/*
 	* This takes into account the fact that the execve system call can change the values in the stack. If I change the new stack state,
 	* it'll be inconsistent, and in this case the return address will go wobbly.
 	*/
-	eax = (*sc)(stack->EAX, stack->EBX, stack->ECX, stack);
-	if(stack->EIP == eip)
-		stack->EAX = eax;
+	rax = (*sc)(stack->RAX, stack->RBX, stack->RCX, stack);
+	if(stack->RIP == rip)
+		stack->RAX = rax;
 }

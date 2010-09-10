@@ -54,8 +54,8 @@ namespace MemoryManagement
 	class Heap
 	{
 	private:
-		typedef unsigned int size_t;
-		typedef unsigned int uintptr_t;
+		typedef uint64 size_t;
+		typedef uint64 uintptr_t;
 		HeapDataStructures::liballoc_major *l_memRoot;
 		HeapDataStructures::liballoc_major *l_bestBet;
 		int l_pageSize;

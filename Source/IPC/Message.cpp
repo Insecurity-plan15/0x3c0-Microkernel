@@ -1,6 +1,6 @@
 #include <IPC/Message.h>
 
-Message::Message(void *d, unsigned int l, Process *src, Process *dest, unsigned int cd, unsigned int msgChain)
+Message::Message(virtAddress d, unsigned int l, Process *src, Process *dest, unsigned int cd, unsigned int msgChain)
 {
 	data = d;
 	length = l;
@@ -24,7 +24,7 @@ Process *Message::GetSource()
 	return source;
 }
 
-void *Message::GetData()
+virtAddress Message::GetData()
 {
 	return data;
 }

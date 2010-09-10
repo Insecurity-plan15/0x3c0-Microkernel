@@ -1,6 +1,8 @@
 #ifndef Memory_H
 #define Memory_H
 
+#include <Typedefs.h>
+
 class Memory
 {
 private:

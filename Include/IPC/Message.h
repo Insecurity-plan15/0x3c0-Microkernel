@@ -9,18 +9,18 @@
 struct Message
 {
 private:
-	void *data;
+	virtAddress data;
 	unsigned int length;
 	Process *source;
 	Process *destination;
 	unsigned int code;
 	unsigned int messageChain;
 public:
-	Message(void *d, unsigned int l, Process *src, Process *dest, unsigned int cd, unsigned int msgChain);
+	Message(virtAddress d, unsigned int l, Process *src, Process *dest, unsigned int cd, unsigned int msgChain);
 	~Message();
 	Process *GetDestination();
 	Process *GetSource();
-	void *GetData();
+	virtAddress GetData();
 	unsigned int GetLength();
 	unsigned int GetCode();
 	unsigned int GetMessageChain();

@@ -7,7 +7,6 @@ extern x86::GDTEntry reservedGDTSpace;
 
 extern "C"
 {
-	void SetGDT(x86::DescriptorTablePointer *);
 	void SetIDT(x86::DescriptorTablePointer *);
 	void SetTSS(unsigned int);
 
@@ -65,8 +64,10 @@ extern "C"
 	void ISR64();
 }
 
+//This is the initial value, described below
+virtAddress DescriptorTables::initialGDTValue = 0;
 //To start with, the GDT is a pointer to a pre-allocated array. When multiple CPUs are involved, it gets rearranged slightly
-x86::GDTEntry *DescriptorTables::gdt = &reservedGDTSpace;
+x86::GDTEntry *DescriptorTables::gdt = 0;
 //Update the values of Base and Limit when I install and remove a TSS
 x86::DescriptorTablePointer DescriptorTables::gdtPointer;
 
@@ -83,27 +84,15 @@ DescriptorTables::~DescriptorTables()
 
 void DescriptorTables::installGDT()
 {
-	unsigned int accessFlags[5] = {0x0, 0x9A, 0x92, 0xFA, 0xF2};
-
-	gdt[0].LimitLow = gdt[0].BaseLow = gdt[0].BaseMiddle = gdt[0].AccessFlags = gdt[0].Granularity = gdt[0].BaseHigh = 0;
-	for(unsigned char i = 1; i < 5; i++)
-	{
-		gdt[i].LimitLow = 0xFFFF;
-		gdt[i].BaseLow = 0;
-		gdt[i].BaseMiddle = 0;
-		gdt[i].AccessFlags = accessFlags[i];
-		gdt[i].Granularity = 0xCF;
-		gdt[i].BaseHigh = 0;
-	}
-	gdtPointer.Limit = sizeof(x86::GDTEntry) * 6 - 1;
-	gdtPointer.Base = (unsigned int)gdt;
-	SetGDT(&gdtPointer);
+	asm volatile ("sgdt %0" : "=m"(gdtPointer) : : "memory");
+	gdt = (x86::GDTEntry *)(gdtPointer.Base);
+	initialGDTValue = gdtPointer.Base;
 }
 
 void DescriptorTables::installIDT()
 {
 	idtPointer.Limit = sizeof(idt) - 1;
-	idtPointer.Base = (unsigned int)&idt;
+	idtPointer.Base = (cpuRegister)&idt;
 
 	Memory::Clear(&idt, sizeof(x86::IDTEntry) * 256);
 
@@ -172,7 +161,7 @@ void DescriptorTables::installIDT()
 	IRQEntry(14);
 	IRQEntry(15);
 
-	SetIDT(&idtPointer);
+	//SetIDT(&idtPointer);
 }
 
 //By this point, I expect physical and virtual memory management to be set up. Heap allocations are therefore no problem
@@ -182,7 +171,7 @@ void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0, bool in
 	unsigned int highestIndex = ((gdtPointer.Limit + 1) / sizeof(x86::GDTEntry)) - 1;
 	//tss will need to be allocated dynamically
 	x86::TaskStateSegment *tss = new x86::TaskStateSegment();
-	unsigned int base = (unsigned int)tss;
+	virtAddress base = (virtAddress)tss;
 	unsigned int limit = base + sizeof(x86::TaskStateSegment);
 	//I add five because I need to know how many elements there are in the GDT, not just TSSes
 	unsigned int tssIndex = cpuID + 5;
@@ -192,7 +181,7 @@ void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0, bool in
 	if(tssIndex > highestIndex)
 	{
 		//This is the first time I'm reallocating the GDT. A standard realloc won't work
-		if(gdt == &reservedGDTSpace)
+		if((virtAddress)gdt == initialGDTValue)
 		{
 			x86::GDTEntry *newGdt = new x86::GDTEntry[tssIndex + 1];
 
@@ -211,7 +200,7 @@ void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0, bool in
 			else
 				asm volatile ("cli; hlt" : : "a"(0xDEAD));
 		}
-		gdtPointer.Base = (unsigned int)gdt;
+		gdtPointer.Base = (cpuRegister)gdt;
 		//I add one because I need the total number of elements, not the upper bound of the array
 		gdtPointer.Limit = (tssIndex + 1) * sizeof(x86::GDTEntry) - 1;
 
@@ -220,7 +209,7 @@ void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0, bool in
 		//   structure.
 		//2. This line shouldn't be necessary in the first place. The CPU already knows the address of the GDT pointer. All I do is update
 		//   some fields in it.
-		asm volatile ("lgdt (%%eax)" : : "a"(&gdtPointer));
+		asm volatile ("lgdt %0" : : "m"(gdtPointer));
 	}
 	else if(tssIndex < highestIndex)
 		//Removal of TSSes is not supported. If I wanted to shut down a processor, I would implement it
@@ -246,7 +235,7 @@ void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0, bool in
 	SetTSS((tssIndex * sizeof(x86::GDTEntry)) | 0x3);
 }
 
-void DescriptorTables::setIDTGate(unsigned char i, unsigned int function, unsigned short selector, unsigned char flags)
+void DescriptorTables::setIDTGate(unsigned char i, virtAddress function, unsigned short selector, unsigned char flags)
 {
 	idt[i].FunctionLow = function & 0xFFFF;
 	idt[i].FunctionHigh = (function >> 16) & 0xFFFF;
@@ -257,11 +246,10 @@ void DescriptorTables::setIDTGate(unsigned char i, unsigned int function, unsign
 
 void DescriptorTables::Install()
 {
-	installGDT();
 	installIDT();
 }
 
-void DescriptorTables::InstallTSS(unsigned int esp0, unsigned int cpuID)
+void DescriptorTables::InstallTSS(virtAddress esp0, unsigned int cpuID)
 {
 	installTSS(cpuID, esp0);
 }
@@ -270,7 +258,7 @@ void DescriptorTables::InstallTSS(unsigned int esp0, unsigned int cpuID)
 * No circular dependancy here, regardless of how it looks. I call AddTSS with esp0 = 0, then the Scheduler class' SetupStack method
 * (which internally calls installTSS, passing the current TSS identifier and the new esp0).
 */
-void DescriptorTables::AddTSS(unsigned int esp0)
+void DescriptorTables::AddTSS(virtAddress esp0)
 {
     installTSS(0, esp0, true);
 }

@@ -31,7 +31,7 @@ private:
 	static void returnMethod();
 	static void ring3Start(StackStates::x86Stack *stack, ...);
 public:
-	Thread(unsigned int start, Process *p, bool irqMessage = false);	//start is the initial EIP
+	Thread(virtAddress start, Process *p, bool irqMessage = false);	//start is the initial EIP
 	~Thread();
 	//args is a collection of [argCount] arguments
 	void Start(void **args, unsigned int argCount = 1);
@@ -43,9 +43,9 @@ public:
 	void Sleep();
 	void Wake();
 
-	unsigned int GetEIP();
+	virtAddress GetEIP();
 	unsigned int GetStatus();
-	unsigned int GetEntryPoint();
+	virtAddress GetEntryPoint();
 };
 
 #endif

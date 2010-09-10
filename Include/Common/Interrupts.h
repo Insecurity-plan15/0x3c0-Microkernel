@@ -3,28 +3,32 @@
 
 #include <LinkedList.h>
 #include <List.h>
+#include <Typedefs.h>
 
 namespace StackStates
 {
 	struct Interrupt
 	{
-		unsigned int DS;											//Data segment selector
-		unsigned int EDI, ESI, EBP, ESP, EBX, EDX, ECX, EAX;		//Pushed by pusha.
-		unsigned int InterruptNumber, ErrorCode;					//Interrupt number and error code (if applicable)
-		unsigned int EIP, CS, EFLAGS, UserESP, SS;					//Pushed by the processor automatically.
+		cpuRegister DS;											//Data segment selector
+		cpuRegister RDI, RSI, RBP, RSP, RBX, RDX, RCX, RAX;		//Pushed by pusha.
+		cpuRegister InterruptNumber, ErrorCode;					//Interrupt number and error code (if applicable)
+		cpuRegister RIP;
+		cpuRegister CS, EFLAGS;
+		cpuRegister UserESP;
+		cpuRegister SS;					//Pushed by the processor automatically.
 	} __attribute__((packed));
 
 	//This isn't laid out properly, but contains everything that a thread's stack will
 	struct x86Stack
 	{
-		unsigned int CS, DS, SS;
-		unsigned int EAX, EBX, ECX, EDX;
-		unsigned int EBP, ESP;
-		unsigned int EDI, ESI;
-		unsigned int EFLAGS, UserESP;
-		unsigned int EIP;
+		cpuRegister CS, DS, SS;
+		cpuRegister RAX, RBX, RCX, RDX;
+		cpuRegister RBP, RSP;
+		cpuRegister RDI, RSI;
+		cpuRegister EFLAGS;
+		cpuRegister UserESP, RIP;
 
-		unsigned int EntryPoint;
+		cpuRegister EntryPoint;
 	};
 }
 

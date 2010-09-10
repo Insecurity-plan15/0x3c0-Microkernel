@@ -56,57 +56,55 @@ extern exceptionHandler
 extern irqHandler
 
 commonExceptionHandler:
-    pusha					; Pushes edi, esi, ebp, esp, ebx, edx, ecx, eax
+;    pusha					; Pushes edi, esi, ebp, esp, ebx, edx, ecx, eax
 
-    mov ax, ds				; Lower 16-bits of eax = ds.
-    push eax				; save the data segment descriptor
+;    mov ax, ds				; Lower 16-bits of eax = ds.
+;    push eax				; save the data segment descriptor
 
-    mov ax, 0x10			; load the kernel data segment descriptor
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
+;    mov ax, 0x10			; load the kernel data segment descriptor
+;    mov ds, ax
+;    mov es, ax
+;    mov fs, ax
+;    mov gs, ax
 
-	mov ebp, esp
-	push ebp
-    call exceptionHandler
-    mov esp, eax
+;	mov ebp, esp
+;	push ebp
+;    call exceptionHandler
+;    mov esp, eax
 
-    pop eax					; reload the original data segment descriptor
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
+;    pop eax					; reload the original data segment descriptor
+;    mov ds, ax
+;    mov es, ax
+;    mov fs, ax
+;    mov gs, ax
 
-    popa					; Pops edi, esi, ebp, esp, ebx, edx, ecx, eax
-    add esp, 8				; Cleans up the pushed error code and pushed ISR number
-    sti
+;    popa					; Pops edi, esi, ebp, esp, ebx, edx, ecx, eax
+;    add esp, 8				; Cleans up the pushed error code and pushed ISR number
     iret					; pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP
 
 commonIRQHandler:
-	pusha					; Pushes edi, esi, ebp, esp, ebx, edx, ecx, eax
+;	pusha					; Pushes edi, esi, ebp, esp, ebx, edx, ecx, eax
 
-	mov ax, ds				; Lower 16-bits of eax = ds.
-	push eax				; save the data segment descriptor
+;	mov ax, ds				; Lower 16-bits of eax = ds.
+;	push eax				; save the data segment descriptor
 
-	mov ax, 0x10			; load the kernel data segment descriptor
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
+;	mov ax, 0x10			; load the kernel data segment descriptor
+;	mov ds, ax
+;	mov es, ax
+;	mov fs, ax
+;	mov gs, ax
 
-	mov ebp, esp
-	push ebp
-	call irqHandler
-	mov esp, eax
+;	mov ebp, esp
+;	push ebp
+;	call irqHandler
+;	mov esp, eax
 
-	pop ebx					; reload the original data segment descriptor
-	mov ds, bx
-	mov es, bx
-	mov fs, bx
-	mov gs, bx
+;	pop ebx					; reload the original data segment descriptor
+;	mov ds, bx
+;	mov es, bx
+;	mov fs, bx
+;	mov gs, bx
 
-	popa					; Pops edi, esi, ebp, esp, ebx, edx, ecx, eax
-	add esp, 8				; Cleans up the pushed error code and pushed ISR number
-	sti
-	iret					; pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP
+;	popa					; Pops edi, esi, ebp, esp, ebx, edx, ecx, eax
+;	add esp, 8				; Cleans up the pushed error code and pushed ISR number
+;	iret					; pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP

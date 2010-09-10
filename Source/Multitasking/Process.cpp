@@ -12,9 +12,9 @@ void Process::sendStatusChangeMessage(unsigned int newStatus)
 	//Upper 32 bits = child process ID
 	//Middle 16 bits = new status
 	//Lower 16 bits = exit code
-	unsigned long long processStatusData = ((unsigned long long)this << 32) | newStatus;
+	uint64 processStatusData = ((uint64)this << 32) | newStatus;
 	//A source PID of 0 means that it's a kernel message
-	Message *m = new Message((void *)&processStatusData, sizeof(processStatusData), 0, parent, 41, 0);
+	Message *m = new Message((virtAddress)&processStatusData, sizeof(processStatusData), 0, parent, 41, 0);
 
 	if(parent != 0)
 		parent->SendMessage(m);
@@ -76,9 +76,9 @@ void Process::SetName(char *n)
 	Strings::Copy((char *)name, (char *)n, sizeof(name));
 }
 
-unsigned int Process::GetProcessId()
+uint64 Process::GetProcessId()
 {
-	return (unsigned int)this;
+	return (uint64)this;
 }
 
 LinkedList<Thread *> *Process::GetThreads()
@@ -175,11 +175,11 @@ void Process::SendMessage(Message *message)
 	//Just a basic variable; it makes things clearer for me
 	Process *sendTo = message->GetDestination();
 	//Allocate a block of memory into the destination process' address space which is big enough for the data
-	void *data = sendTo->GetAllocator()->Allocate(message->GetLength());
+	virtAddress data = (virtAddress)sendTo->GetAllocator()->Allocate(message->GetLength());
 	//Clone the message structure, but point it to the new data
 	SystemCalls::Native::UserLevelStructures::Message *m = new (sendTo) SystemCalls::Native::UserLevelStructures::Message();
 	//Create the new thread
-	Thread *th = new Thread((unsigned int)sendTo->onReceipt, sendTo, message->GetCode() == MessageCodes::Drivers::InterruptReceived);
+	Thread *th = new Thread((virtAddress)sendTo->onReceipt, sendTo, message->GetCode() == MessageCodes::Drivers::InterruptReceived);
 	//Find the page directory to copy from. If the source is 0, use the kernel's
 	MemoryManagement::x86::PageDirectory pd = message->GetSource() == 0 ? MemoryManagement::Virtual::GetKernelDirectory() :
 		message->GetSource()->pageDir;
@@ -188,10 +188,10 @@ void Process::SendMessage(Message *message)
 	//I use my special method which performs a few tricks with paging to speed things up and make the transfer possible
 	MemoryManagement::Virtual::CopyToAddressSpace((unsigned int)message->GetData(), message->GetLength(), (unsigned int)data,
 		pd);
-	m->Data = (unsigned int)data;
+	m->Data = data;
 	m->Length = message->GetLength();
 	m->Code = message->GetCode();
-	m->Source = (unsigned int)message->GetSource();
+	m->Source = (virtAddress)message->GetSource();
 	m->MessageChain = message->GetMessageChain();
 	//Start the new thread
 	th->Start((void **)&m);

@@ -11,11 +11,11 @@
 
 using namespace SystemCalls::Native;
 
-unsigned int Internal::isAddressValid(unsigned int address, bool checkUserMode)
+unsigned int Internal::isAddressValid(virtAddress address, bool checkUserMode)
 {
-	unsigned int flags = 0;
+	uint64 flags = 0;
 
-	MemoryManagement::Virtual::RetrieveMapping((void *)address, &flags);
+	MemoryManagement::Virtual::RetrieveMapping(address, &flags);
 	if((flags & MemoryManagement::x86::PageDirectoryFlags::Present) == 0)
 		return 1;
 	if(checkUserMode && ((flags & MemoryManagement::x86::PageDirectoryFlags::UserAccessible) == 0))
@@ -43,7 +43,7 @@ SystemCallDefinition(CreateThread)
 	//If the process doesn't have permission to create a thread, don't go any further
 	if(! p->GetSecurityPrivileges()->TestBit(SecurityPrivilege::CreateThread))
 		return 3;
-	thread = new Thread(eax, sched->GetCurrentProcess());
+	thread = new Thread((virtAddress)eax, sched->GetCurrentProcess());
 	//Get the current process from the current CPUs scheduler, and create a thread
 	thread->Start((void **)ebx);
 	sched->Wake(p);
@@ -97,7 +97,7 @@ SystemCallDefinition(CreateProcess)
 	//Check that the elements in the list are valid
 	for(unsigned int i = 0; i < elementCount * sizeof(UserLevelStructures::MemoryBlock); i += PageSize)
 	{
-		valid = isAddressValid((unsigned int)blocks + i, true);
+		valid = isAddressValid((virtAddress)blocks + i, true);
 		if(valid != 0)
 			return valid;
 	}
@@ -169,7 +169,7 @@ SystemCallDefinition(SendMessage)
 		return valid;
 	if(! p->GetSecurityPrivileges()->TestBit(SecurityPrivilege::MessagePassing))
 		return 3;
-	for(unsigned int i = internalMsg->Data; i < internalMsg->Data + internalMsg->Length; i += PageSize)
+	for(virtAddress i = internalMsg->Data; i < internalMsg->Data + internalMsg->Length; i += PageSize)
 	{
 		valid = isAddressValid(i, true);
 		if(valid != 0)
@@ -178,7 +178,7 @@ SystemCallDefinition(SendMessage)
 	valid = isAddressValid(ebx, true);
 	if(valid != 0)
 		return valid;
-	msg = new Message((void *)internalMsg->Data, internalMsg->Length, p, (Process *)ebx, internalMsg->Code, internalMsg->MessageChain);
+	msg = new Message(internalMsg->Data, internalMsg->Length, p, (Process *)ebx, internalMsg->Code, internalMsg->MessageChain);
 	p->SendMessage(msg);
 	delete msg;
 	return 0;
@@ -210,11 +210,11 @@ SystemCallDefinition(RequestCPUBootStub)
 
 SystemCallDefinition(RequestIdentityMapping)
 {
-	unsigned int flags = 0;
+	uint64 flags = 0;
 
-	for(unsigned int i = eax; i < eax + ebx; eax += PageSize)
+	for(virtAddress i = eax; i < eax + ebx; eax += PageSize)
 	{
-		MemoryManagement::Virtual::RetrieveMapping((void *)i, &flags);
+		MemoryManagement::Virtual::RetrieveMapping(i, &flags);
 		if((flags & MemoryManagement::x86::PageDirectoryFlags::Present) != 0)
 			//Mapping already present, not going to allow it to be removed.
 			return 1;
@@ -264,7 +264,7 @@ SystemCallDefinition(Yield)
 SystemCallDefinition(PerformPageManagement)
 {
 	unsigned int error = isAddressValid(eax, false);
-	void *p = 0;
+	physAddress p = 0;
 
 	//If the page is not present, then isAddressValid will return 1
 	if(error != 1)
@@ -280,24 +280,24 @@ SystemCallDefinition(PerformPageManagement)
             p = MemoryManagement::Physical::PageAllocator::AllocatePage(true);
             if(p == 0)
                 return 3;
-            stack->EBX = (unsigned int)p;
+            stack->RBX = (cpuRegister)p;
             return 0;
         }
         case 2:
         {
-            unsigned int data[2];
+            uint64 data[2];
 
-            data[0] = MemoryManagement::Virtual::RetrieveMapping((void *)eax, &data[1]);
+            data[0] = (uint64)MemoryManagement::Virtual::RetrieveMapping(eax, &data[1]);
             if((data[1] & MemoryManagement::x86::PageDirectoryFlags::Present) == 0)
                 return 3;
-            MemoryManagement::Physical::PageAllocator::FreePage((void *)data[0]);
-            MemoryManagement::Virtual::EraseMapping((void *)eax);
+            MemoryManagement::Physical::PageAllocator::FreePage((physAddress)data[0]);
+            MemoryManagement::Virtual::EraseMapping(eax);
             return 0;
         }
 	}
 	//Allocate a page and map it in
 	p = MemoryManagement::Physical::PageAllocator::AllocatePage(false);
-	MemoryManagement::Virtual::MapMemory((unsigned int)p, eax, MemoryManagement::x86::PageDirectoryFlags::Present |
+	MemoryManagement::Virtual::MapMemory(p, eax, MemoryManagement::x86::PageDirectoryFlags::Present |
 		MemoryManagement::x86::PageDirectoryFlags::ReadWrite | MemoryManagement::x86::PageDirectoryFlags::UserAccessible);
 	return 0;
 }
@@ -336,7 +336,7 @@ SystemCallDefinition(SecurityPrivilegeStatus)
 
 	if(eax > SecurityPrivilegeCount - 1)
 		return 4;
-	stack->EBX = security->TestBit(eax);
+	stack->RBX = security->TestBit(eax);
 	return 0;
 }
 
@@ -424,7 +424,7 @@ SystemCallDefinition(RequestProcessData)
 		Drivers::DriverInfoBlock *vfs = Drivers::DriverManager::GetDriverManager()->GetVFS();
 
 		//Obvious reasons here. If vfs is 0, accessing vfs->Parent will cause a page fault
-		returnData->VFSPointer = vfs != 0 ? (unsigned int)vfs->Parent : 0;
+		returnData->VFSPointer = vfs != 0 ? (virtAddress)vfs->Parent : 0;
 	}
 	else
 		returnData->VFSPointer = 0;
@@ -438,7 +438,7 @@ SystemCallDefinition(RequestProcessData)
 		for(LinkedListNode<Process *> *node = processes->First; node != 0 && node->Value != 0; node = node->Next, i++)
 		{
 			Memory::Copy((void *)&returnData->Processes[i].Name, node->Value->GetName(), sizeof(returnData->Processes[i].Name));
-			returnData->Processes[i].PID = (unsigned int)node->Value;
+			returnData->Processes[i].PID = (virtAddress)node->Value;
 			if(BitSet(flags, 3))
 			{
 				if(node->Value->GetDriver() == 0)
@@ -472,7 +472,7 @@ SystemCallDefinition(RequestProcessData)
 				returnData->Processes[i].Threads = new (p) UserLevelStructures::ProcessData::Thread[node->Value->GetThreads()->GetCount()];
 				for(LinkedListNode<Thread *> *threadNode = node->Value->GetThreads()->First; node != 0 && node->Value != 0; node = node->Next, j++)
 				{
-					returnData->Processes[i].Threads[j].TID = (unsigned int)threadNode->Value;
+					returnData->Processes[i].Threads[j].TID = (virtAddress)threadNode->Value;
 					returnData->Processes[i].Threads[j].EIP = threadNode->Value->GetEIP();
 					returnData->Processes[i].Threads[j].Status = threadNode->Value->GetStatus();
 				}
@@ -484,8 +484,8 @@ SystemCallDefinition(RequestProcessData)
 			}
 		}
 	}
-	returnData->CurrentPID = BitSet(flags, 6) ? (unsigned int)Scheduler::GetScheduler()->GetCurrentProcess() : 0;
-	stack->EBP = (unsigned int)returnData;
+	returnData->CurrentPID = BitSet(flags, 6) ? (virtAddress)Scheduler::GetScheduler()->GetCurrentProcess() : 0;
+	stack->RBP = (virtAddress)returnData;
 	return 0;
 }
 
@@ -493,29 +493,29 @@ SystemCallDefinition(GetCurrentThread)
 {
 	Scheduler *sched = Scheduler::GetScheduler();
 
-	return (unsigned int)sched->GetCurrentThread();
+	return (virtAddress)sched->GetCurrentThread();
 }
 
 void SystemCallInterrupt::receive(StackStates::Interrupt *stack)
 {
-	unsigned int eip = stack->EIP;
-	unsigned int eax = 0;
+	cpuRegister rip = stack->RIP;
+	cpuRegister rax = 0;
 
-	if(stack->EDX >= (sizeof(calls) / sizeof(SystemCall)))
+	if(stack->RDX >= (sizeof(calls) / sizeof(SystemCall)))
 	{
 		//Somebody's trying to mess up the kernel. Stop them
-		stack->EAX = 0xFFFFFFFF;
+		stack->RAX = 0xFFFFFFFF;
 		return;
 	}
-	SystemCall sc = calls[stack->EDX];
+	SystemCall sc = calls[stack->RDX];
 
 	/*
 	* This takes into account the fact that the Yield system call can change the values in the stack. If I change the new stack state,
 	* it'll be inconsistent, and in this case the return address will go wobbly.
 	*/
-	eax = (*sc)(stack->EAX, stack->EBX, stack->ECX, stack);
-	if(stack->EIP == eip)
-		stack->EAX = eax;
+	rax = (*sc)(stack->RAX, stack->RBX, stack->RCX, stack);
+	if(stack->RIP == rip)
+		stack->RAX = rax;
 }
 
 SystemCallInterrupt::SystemCallInterrupt()

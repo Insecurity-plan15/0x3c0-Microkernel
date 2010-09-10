@@ -3,12 +3,12 @@
 
 using namespace MemoryManagement::Physical;
 
-unsigned int *PageAllocator::bitmap;
+virtAddress *PageAllocator::bitmap;
 //A frame is otherwise known as an integer. frameCount therefore, contains the number of integers in the bitmap
-unsigned int PageAllocator::frameCount = 0;
+uint64 PageAllocator::frameCount = 0;
 //The end of the DMA zone is the number of pages between 0 and 16 MiB
 //If there is less than 16 MiB of memory, this is 0
-unsigned int PageAllocator::dmaZoneEnd = 0;
+uint32 PageAllocator::dmaZoneEnd = 0;
 
 PageAllocator::PageAllocator()
 {
@@ -18,27 +18,27 @@ PageAllocator::~PageAllocator()
 {
 }
 
-bool PageAllocator::testBit(unsigned int bit)
+bool PageAllocator::testBit(uint64 bit)
 {
 	//This could easily be written using ==, not !=. But that would require another value to be computed, instead of a constant
 	//Plus, it's easier to read
 	return (bitmap[bit / 32] & (1 << (bit % 32))) != 0;
 }
 
-void PageAllocator::setBit(unsigned int bit)
+void PageAllocator::setBit(uint64 bit)
 {
 	bitmap[bit / 32] |= (1 << (bit % 32));
 }
 
-void PageAllocator::clearBit(unsigned int bit)
+void PageAllocator::clearBit(uint64 bit)
 {
 	bitmap[bit / 32] &= ~(1 << (bit % 32));
 }
 
 void PageAllocator::Initialise(MultibootInfo *multiboot)
 {
-	extern unsigned int end;	//This is just a simple pointer to the end of the kernel. Nothing else uses it
-	unsigned int memorySize = (multiboot->MemoryHigh * 1024) & PageMask;
+	extern virtAddress end;	//This is just a simple pointer to the end of the kernel. Nothing else uses it
+	uint64 memorySize = (multiboot->MemoryHigh * 1024) & PageMask;
 	unsigned int pages = memorySize / PageSize;
 	unsigned int dmaSegment = DMAMemoryConstraint / PageSize;
 
@@ -53,7 +53,7 @@ void PageAllocator::Initialise(MultibootInfo *multiboot)
 		dmaZoneEnd = 0;
 	//This just uses the E820 memory map to mark some of the physical zones of memory as allocated (if unusable)
 	//Trick alert: &ele[1] just increments ele by sizeof(MemoryMapElement). It's just easier for me to write
-	for(MemoryMapElement *ele = multiboot->MemoryMap; (unsigned int)ele < (unsigned int)multiboot->MemoryMap + multiboot->MemoryMapLength;
+	for(MemoryMapElement *ele = multiboot->MemoryMap; (virtAddress)ele < (virtAddress)multiboot->MemoryMap + multiboot->MemoryMapLength;
 		ele = &ele[1])
 	{
 		unsigned int startBit = (ele->BaseAddressLow & PageMask) / PageSize;
@@ -77,7 +77,7 @@ void PageAllocator::Initialise(MultibootInfo *multiboot)
 	setBit(0);
 }
 
-unsigned int PageAllocator::firstFreeBit(bool dma)
+uint64 PageAllocator::firstFreeBit(bool dma)
 {
 	//Iterate every integer in the array
 	for(unsigned int i = (dma ? 0 : dmaZoneEnd); i < (dma ? dmaZoneEnd : frameCount); i++)
@@ -92,7 +92,7 @@ unsigned int PageAllocator::firstFreeBit(bool dma)
 	return 0;
 }
 
-unsigned int PageAllocator::firstFreeBits(unsigned int n, bool dma)
+uint64 PageAllocator::firstFreeBits(unsigned int n, bool dma)
 {
 	for(unsigned int i = (dma ? 0 : dmaZoneEnd); i < (dma ? dmaZoneEnd : frameCount); i++)
 	{
@@ -117,32 +117,32 @@ unsigned int PageAllocator::firstFreeBits(unsigned int n, bool dma)
 	return 0;
 }
 
-void *PageAllocator::AllocatePage(bool dma)
+physAddress PageAllocator::AllocatePage(bool dma)
 {
-	unsigned int bit = firstFreeBit(dma);
+	uint64 bit = firstFreeBit(dma);
 
 	//Mark the memory as allocated
 	setBit(bit);
 	//Fairly simple. firstFreeBit can return 0, but 0*PageSize = 0, signalling no more memory
-	return (void *)(bit * PageSize);
+	return (physAddress)(bit * PageSize);
 }
 
-void *PageAllocator::AllocatePages(unsigned int n, bool dma)
+physAddress PageAllocator::AllocatePages(unsigned int n, bool dma)
 {
-	unsigned int bit = firstFreeBits(dma);
+	uint64 bit = firstFreeBits(dma);
 
 	//Mark the memory as allocated
-	for(unsigned int i = bit; i < bit + n; i++)
+	for(uint64 i = bit; i < bit + n; i++)
 		setBit(i);
-	return (void *)(bit * PageSize);
+	return (physAddress)(bit * PageSize);
 }
 
-bool PageAllocator::FreePage(void *ptr)
+bool PageAllocator::FreePage(physAddress pg)
 {
-	unsigned int bitIndex = (unsigned int)ptr / PageSize;
+	uint64 bitIndex = (uint64)((physAddress)pg / PageSize);
 
 	//If the pointer isn't page-aligned, die quickly
-	if(((unsigned int)ptr % PageSize) != 0)
+	if(((physAddress)pg % PageSize) != 0)
 		return false;
 	clearBit(bitIndex);
 	return true;

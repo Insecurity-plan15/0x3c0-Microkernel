@@ -15,20 +15,20 @@ namespace MemoryManagement
 		private:
 			PageAllocator();
 			~PageAllocator();
-			static unsigned int *bitmap;
-			static unsigned int frameCount;
-			static unsigned int dmaZoneEnd;
+			static virtAddress *bitmap;
+			static uint64 frameCount;
+			static uint32 dmaZoneEnd;
 
-			static bool testBit(unsigned int bit);
-			static void setBit(unsigned int bit);
-			static void clearBit(unsigned int bit);
-			static unsigned int firstFreeBit(bool dma = false);
-			static unsigned int firstFreeBits(unsigned int n, bool dma = false);
+			static bool testBit(uint64 bit);
+			static void setBit(uint64 bit);
+			static void clearBit(uint64 bit);
+			static uint64 firstFreeBit(bool dma = false);
+			static uint64 firstFreeBits(unsigned int n, bool dma = false);
 		public:
 			static void Initialise(MultibootInfo *multiboot);
-			static void *AllocatePage(bool dma = false);
-			static void *AllocatePages(unsigned int n, bool dma = false);
-			static bool FreePage(void *ptr);
+			static physAddress AllocatePage(bool dma = false);
+			static physAddress AllocatePages(unsigned int n, bool dma = false);
+			static bool FreePage(physAddress pg);
 		};
 	}
 }
