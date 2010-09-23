@@ -9,7 +9,7 @@ private:
 	Memory();
 	~Memory();
 public:
-	static void Clear(void *src, unsigned int size);
-	static void Copy(void *destination, const void *src, unsigned int num);
+	static void Clear(void *src, uint64 size);
+	static void Copy(void *destination, const void *src, uint64 num);
 };
 #endif

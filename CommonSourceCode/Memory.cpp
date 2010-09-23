@@ -8,14 +8,14 @@ Memory::~Memory()
 {
 }
 
-void Memory::Clear(void *src, unsigned int size)
+void Memory::Clear(void *src, uint64 size)
 {
-	for(unsigned int i = 0; i < size; i++)
+	for(uint64 i = 0; i < size; i++)
 		((char *)src)[i] = 0;
 }
 
-void Memory::Copy(void *destination, const void *src, unsigned int num)
+void Memory::Copy(void *destination, const void *src, uint64 num)
 {
-	for(unsigned int i = 0; i < num; i++)
+	for(uint64 i = 0; i < num; i++)
 		((char *)destination)[i] = ((char *)src)[i];
 }

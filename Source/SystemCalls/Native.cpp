@@ -247,7 +247,7 @@ SystemCallDefinition(InstallDriver)
 	driverManager->InstallDriver(driver);
 	//Set the IOPL to 3, so that the driver can use port IO
 	//TODO: This isn't the best way to do this. I need to consider alternative options, such as the IO permission bitmap
-	stack->EFLAGS |= 0x3000;
+	stack->RFLAGS |= 0x3000;
 	return 0;
 }
 

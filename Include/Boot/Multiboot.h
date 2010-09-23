@@ -61,7 +61,8 @@ struct Module
 {
 	unsigned int Start;
 	unsigned int End;
-	char *Name;
+	//This is a char *, but in 64-bit mode pointers are 8 bytes wide
+	unsigned int Name;
 	unsigned int Reserved;
 } __attribute__((packed));
 
@@ -154,23 +155,32 @@ struct MultibootInfo
 	unsigned int MemoryLow;
 	unsigned int MemoryHigh;
 	unsigned int BootDevice;
-	char *CommandLine;
+	//Should be char *
+	unsigned int CommandLine;
 	unsigned int ModuleCount;
-	Module *Modules;
+	//Should be Module *
+	unsigned int Modules;
 	union
 	{
 		AOUTSymbolTable AOUTTable;
 		ELFHeaderTable ELFTable;
 	} SymbolTables;
 	unsigned int MemoryMapLength;
-	MemoryMapElement *MemoryMap;
+	//Should be MemoryMapElement *
+	unsigned int MemoryMap;
 	unsigned int DrivesLength;
-	DriveStructure *DrivesAddress;
-	ROMConfigurationTable *ConfigTable;
-	char *BootloaderName;
-	APMTable *ApmTable;
-	VbeInfoBlock *VBEControlInformation;
-	VbeModeInfo *VBEModeInformation;
+	//Should be DriveStructure *
+	unsigned int DrivesAddress;
+	//Should be ROMConfigurationTable *
+	unsigned int ConfigTable;
+	//Should be char *
+	unsigned int BootloaderName;
+	//Should be APMTable *
+	unsigned int ApmTable;
+	//Should be VbeInfoBlock *
+	unsigned int VBEControlInformation;
+	//Should be VbeModeInfo *
+	unsigned int VBEModeInformation;
 	unsigned short VBEMode;
 	unsigned int VBEInterfaceAddress;
 	unsigned short VBEInterfaceLength;

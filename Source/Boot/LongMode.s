@@ -37,7 +37,9 @@ align 0x8
 	gdt:
 		dq 0x0000000000000000	; Standard NULL entry
 		dq 0x00AF9A000000FFFF	; 64-bit kernel code
-		dq 0x00AF93000000FFFF	; 64-bit kernel data
+		dq 0x00AF92000000FFFF	; 64-bit kernel data
+		dq 0x00AFFA000000FFFF	; 64-bit user code
+		dq 0x00AFF2000000FFFF	; 64-bit user data
 	gdtEnd:
 align 0x8
 gdtPtr:
@@ -76,10 +78,40 @@ asmEntry:
 		bt edx, 29
 		jnc incompatible
 
+		; Bits 19, 24, 25 and 26 of EDX must be set for SSE compatibility
+		; See Intel Volume 3A, section 9.6
+		mov eax, 1
+		cpuid
+		bt edx, 19
+		jnc incompatible
+		bt edx, 24
+		jnc incompatible
+		bt edx, 25
+		jnc incompatible
+		bt edx, 26
+		jnc incompatible
+
+	mov ebx, cr0
+
 	; Enable bit 5 (PAE) in CR4
 	mov ecx, cr4
 	bts ecx, 5
+
+	; Enable bit 9 (OSFXSR) in CR4
+	bts ecx, 9
+
+	; Enable bit 10 (OSXMMEXCPT) in CR4
+	bts ecx, 10
+
+	; Enable bit 1 (MP) in CR0
+	bts ebx, 1
+
+	; Disable bit 2 (EM) in CR0
+	btc ebx, 2
+
+	; Apply these changes and rejoice
 	mov cr4, ecx
+	mov cr0, ebx
 
 	; Switch on long mode in the necessary MSR
 	mov ecx, 0xC0000080

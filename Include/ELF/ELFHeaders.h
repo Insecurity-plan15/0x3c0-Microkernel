@@ -54,8 +54,8 @@ namespace ELF
 
 		bool valid;
 
-		unsigned int base;
-		unsigned int elfEnd;
+		virtAddress base;
+		virtAddress elfEnd;
 
 		unsigned int type;
 

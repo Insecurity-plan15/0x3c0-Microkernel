@@ -9,12 +9,28 @@ namespace StackStates
 {
 	struct Interrupt
 	{
-		cpuRegister DS;											//Data segment selector
-		cpuRegister RDI, RSI, RBP, RSP, RBX, RDX, RCX, RAX;		//Pushed by pusha.
-		cpuRegister InterruptNumber, ErrorCode;					//Interrupt number and error code (if applicable)
+		cpuRegister DS;
+		cpuRegister R15;
+		cpuRegister R14;
+		cpuRegister R13;
+		cpuRegister R12;
+		cpuRegister R11;
+		cpuRegister R10;
+		cpuRegister R9;
+		cpuRegister R8;
+		cpuRegister RBP;
+		cpuRegister RSI;
+		cpuRegister RDI;
+		cpuRegister RDX;
+		cpuRegister RCX;
+		cpuRegister RBX;
+		cpuRegister RAX;
+		cpuRegister InterruptNumber;
+		cpuRegister ErrorCode;
 		cpuRegister RIP;
-		cpuRegister CS, EFLAGS;
-		cpuRegister UserESP;
+		cpuRegister CS;
+		cpuRegister RFLAGS;
+		cpuRegister RSP;
 		cpuRegister SS;					//Pushed by the processor automatically.
 	} __attribute__((packed));
 
@@ -25,8 +41,9 @@ namespace StackStates
 		cpuRegister RAX, RBX, RCX, RDX;
 		cpuRegister RBP, RSP;
 		cpuRegister RDI, RSI;
-		cpuRegister EFLAGS;
-		cpuRegister UserESP, RIP;
+		cpuRegister RFLAGS;
+		cpuRegister RIP;
+		cpuRegister R8, R9, R10, R11, R12, R13, R14, R15;
 
 		cpuRegister EntryPoint;
 	};
@@ -61,7 +78,7 @@ public:
 	static void Install();
 	static void AddInterrupt(InterruptSink *sink);
 	static void RemoveInterrupt(InterruptSink *sink);
-	static LinkedList<InterruptSink *> *GetInterrupts(unsigned short vector);
-	static void InvokeInterruptChain(unsigned short vector, StackStates::Interrupt *stack);
+	static LinkedList<InterruptSink *> *GetInterrupts(uint16 vector);
+	static void InvokeInterruptChain(uint16 vector, StackStates::Interrupt *stack);
 };
 #endif

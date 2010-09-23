@@ -51,7 +51,7 @@ namespace SystemCalls
 
                 struct MemoryUsageStructure
                 {
-                    long long MemoryUsed;
+                    uint64 MemoryUsed;
                     unsigned int SharedPageCount;
                 } __attribute__((packed));
 

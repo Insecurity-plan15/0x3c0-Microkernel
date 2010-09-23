@@ -14,10 +14,13 @@ void Main(unsigned int stack, MultibootInfo *multiboot)
 	Scheduler *sch = 0;
 	MemoryManagement::x86::PageDirectory pd;
 
-	//First things first, load the GDT, IDT and TSS
+	//First things first, load the IDT and TSS
 	DescriptorTables::Install();
 	//Set up the page allocation bitmap, accounting for the memory map
-	MemoryManagement::Physical::PageAllocator::Initialise(multiboot);
+//	MemoryManagement::Physical::PageAllocator::Initialise(multiboot);
+	MemoryManagement::Physical::PageAllocator::CompleteInitialisation(multiboot);
+	asm volatile ("xchg %%bx, %%bx" : : "a"(0xdead), "b"(0xdead), "c"(0xdead));
+	asm volatile ("cli;hlt");
 	//Set up the infrastructure used for paging
 	MemoryManagement::Virtual::Initialise();
 //From this point onwards, heap allocations will work
@@ -33,7 +36,8 @@ void Main(unsigned int stack, MultibootInfo *multiboot)
 	sch->SetupStack();
 	for(unsigned int i = 0; i < multiboot->ModuleCount; i++)
 	{
-		Module *mod = &multiboot->Modules[i];
+		Module *modules = (Module *)multiboot->Modules;
+		Module *mod = &modules[i];
 		//The first 4 MiB is mapped to the last 0xF0000000 bytes of memory
 		virtAddress properStart = (virtAddress)(mod->Start < 0x400000 ? mod->Start + 0xF0000000 : mod->Start);
 		Process *elfProcess = 0;

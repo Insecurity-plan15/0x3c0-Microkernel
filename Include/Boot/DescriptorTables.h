@@ -35,52 +35,15 @@ namespace x86
 
 	struct TaskStateSegment
 	{
-		//If hardware multitasking is used, points to the next TSS
-		unsigned short Link;
-		unsigned short Reserved0;
-		unsigned int ESP0;
-		unsigned short SS0;
-		unsigned short Reserved1;
-
-		unsigned int ESP1;
-		unsigned short SS1;
-		unsigned short Reserved2;
-
-		unsigned int ESP2;
-		unsigned short SS2;
-		unsigned short Reserved3;
-
-		unsigned int CR3;
-		unsigned int EIP;
-		unsigned int EFlags;
-
-		unsigned int EAX;
-		unsigned int ECX;
-		unsigned int EDX;
-		unsigned int EBX;
-
-		unsigned int ESP;
-		unsigned int EBP;
-
-		unsigned int ESI;
-		unsigned int EDI;
-
-		unsigned short ES;
-		unsigned short Reserved4;
-		unsigned short CS;
-		unsigned short Reserved5;
-		unsigned short SS;
-		unsigned short Reserved6;
-		unsigned short DS;
-		unsigned short Reserved7;
-		unsigned short FS;
-		unsigned short Reserved8;
-		unsigned short GS;
-		unsigned short Reserved9;
-
-		unsigned short LDTR;
-		unsigned int Reserved10;
-		unsigned short IOPermissionBitmapOffset;
+		uint32 Reserved0;
+		virtAddress RSP0;
+		virtAddress RSP1;
+		virtAddress RSP2;
+		uint64 Reserved1;
+		uint64 IST[7];
+		uint64 Reserved2;
+		uint16 Reserved3;
+		uint16 IOPermissionBitmapOffset;
 	} __attribute__((packed));
 }
 
@@ -95,20 +58,18 @@ private:
 	static x86::IDTEntry idt[256];
 	static x86::DescriptorTablePointer idtPointer;
 
-	//static x86::TaskStateSegment tss;
+	static x86::TaskStateSegment tss;
 
 	DescriptorTables();
 	~DescriptorTables();
 	static void installGDT();
-	#define ISREntry(n)	setIDTGate(n, (virtAddress)ISR##n, 0x8, 0x8E)
-	#define IRQEntry(n) setIDTGate(n+32, (virtAddress)IRQ##n, 0x8, 0x8E)
 	static void installIDT();
 	//If newCPU is true, cpuID is ignored and a new TSS is created at the end of the GDT
-	static void installTSS(unsigned int cpuID, unsigned int esp0, bool newCPU = false);
-	static void setIDTGate(unsigned char i, virtAddress function, unsigned short selector, unsigned char flags);
+	static void installTSS(uint16 cpuID, cpuRegister esp0, bool newCPU = false);
+	static void setIDTGate(uint32 i, virtAddress function, unsigned short selector, unsigned char flags);
 public:
 	static void Install();
-	static void InstallTSS(virtAddress esp0, unsigned int cpuID);
+	static void InstallTSS(virtAddress esp0, uint16 cpuID);
 	static void AddTSS(virtAddress esp0);
 };
 

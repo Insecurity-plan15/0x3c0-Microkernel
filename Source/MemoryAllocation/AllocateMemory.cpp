@@ -57,26 +57,26 @@ using namespace HeapDataStructures;
 #define ALIGN( ptr )													\
 		if ( ALIGNMENT > 1 )											\
 		{																\
-			uintptr_t diff;												\
+			uintptr_t delta;												\
 			ptr = (void*)((uintptr_t)ptr + ALIGN_INFO);					\
-			diff = (uintptr_t)ptr & (ALIGNMENT-1);						\
-			if ( diff != 0 )											\
+			delta = (uintptr_t)ptr & (ALIGNMENT-1);						\
+			if ( delta != 0 )											\
 			{															\
-				diff = ALIGNMENT - diff;								\
-				ptr = (void*)((uintptr_t)ptr + diff);					\
+				delta = ALIGNMENT - delta;								\
+				ptr = (void*)((uintptr_t)ptr + delta);					\
 			}															\
 			*((ALIGN_TYPE*)((uintptr_t)ptr - ALIGN_INFO)) = 			\
-				diff + ALIGN_INFO;										\
+				delta + ALIGN_INFO;										\
 		}
 
 
 #define UNALIGN( ptr )													\
 		if ( ALIGNMENT > 1 )											\
 		{																\
-			uintptr_t diff = *((ALIGN_TYPE*)((uintptr_t)ptr - ALIGN_INFO));	\
-			if ( diff < (ALIGNMENT + ALIGN_INFO) )						\
+			uintptr_t delta = *((ALIGN_TYPE*)((uintptr_t)ptr - ALIGN_INFO));	\
+			if ( delta < (ALIGNMENT + ALIGN_INFO) )						\
 			{															\
-				ptr = (void*)((uintptr_t)ptr - diff);					\
+				ptr = (void*)((uintptr_t)ptr - delta);					\
 			}															\
 		}
 
@@ -245,7 +245,7 @@ void *Heap::Allocate(size_t req_size)
 {
 	MemoryManagement::x86::PageDirectory pd = MemoryManagement::Virtual::GetPageDirectory();
 	int startedBet = 0;
-	unsigned long long bestSize = 0;
+	uint64 bestSize = 0;
 	void *p = NULL;
 	uintptr_t diff;
 	struct liballoc_major *maj;
@@ -689,7 +689,7 @@ void Heap::Free(void *ptr)
 	liballoc_unlock();		// release the lock
 }
 
-long long Heap::GetAllocatedMemory()
+uint64 Heap::GetAllocatedMemory()
 {
 	return l_inuse;
 }

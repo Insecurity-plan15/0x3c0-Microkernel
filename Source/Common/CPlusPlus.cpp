@@ -13,6 +13,12 @@ extern "C"
 			((void (*)())*ctor)();
 	}
 
+	//Normally, I'd store f and use it as a destructor, but I never invoke destructors so there's no point
+	int __cxa_atexit(void (*f)(void *), void *objptr, void *dso)
+	{
+		return 0;
+	}
+
 	void __cxa_pure_virtual()
 	{
 		//If a virtual method call cannot be made, this function is invoked.

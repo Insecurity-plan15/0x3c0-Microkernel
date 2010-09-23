@@ -5,24 +5,20 @@
 List<LinkedList<InterruptSink *> *> *Interrupts::interrupts = 0;
 
 //The next two methods will get called automatically, as the assembly stubs drop through to them
-extern "C" StackStates::Interrupt *exceptionHandler(StackStates::Interrupt *stack)
+extern "C"
 {
-	//When stack->Interrupt number is passed as a 32-bit integer, it is sign-extended. This can make the value strange
-	//It needs to be capped to a reasonable value
-	if((stack->InterruptNumber & 0xFF) != 0x30)
-		asm volatile ("xchg %%bx, %%bx" : : "a"(stack->InterruptNumber & 0xFF), "c"(stack->RIP), "d"(0xABCFED));
-	Interrupts::InvokeInterruptChain(stack->InterruptNumber & 0xFF, stack);
-	Ports::WriteByte(0x20, 0x20);
-	return stack;
-}
+	StackStates::Interrupt *interruptHandler(StackStates::Interrupt *stack);
 
-extern "C" StackStates::Interrupt *irqHandler(StackStates::Interrupt *stack)
-{
-	Interrupts::InvokeInterruptChain(stack->InterruptNumber & 0xFF, stack);
-	if((stack->InterruptNumber & 0xFF) > 41)
-		Ports::WriteByte(0xA0, 0x20);
-	Ports::WriteByte(0x20, 0x20);
-	return stack;
+	StackStates::Interrupt *interruptHandler(StackStates::Interrupt *stack)
+	{
+		if(stack->InterruptNumber != 0x30)
+			asm volatile ("xchg %%bx, %%bx" : : "a"(stack->InterruptNumber), "b"(stack->RIP), "c"(0xABCFED));
+		//Interrupts::InvokeInterruptChain((uint16)stack->InterruptNumber, stack);
+		if(stack->InterruptNumber > 41)
+			Ports::WriteByte(0xA0, 0x20);
+		Ports::WriteByte(0x20, 0x20);
+		return stack;
+	}
 }
 
 Interrupts::Interrupts()
@@ -60,12 +56,12 @@ void Interrupts::RemoveInterrupt(InterruptSink *sink)
 		interrupts->Remove(sink->v);
 }
 
-LinkedList<InterruptSink *> *Interrupts::GetInterrupts(unsigned short vector)
+LinkedList<InterruptSink *> *Interrupts::GetInterrupts(uint16 vector)
 {
 	return interrupts->GetItem(vector);
 }
 
-void Interrupts::InvokeInterruptChain(unsigned short vector, StackStates::Interrupt *stack)
+void Interrupts::InvokeInterruptChain(uint16 vector, StackStates::Interrupt *stack)
 {
 	LinkedList<InterruptSink *> *ints = GetInterrupts(vector);
 

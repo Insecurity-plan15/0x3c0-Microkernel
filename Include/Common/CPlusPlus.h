@@ -3,7 +3,14 @@
 
 #include <Multitasking/Process.h>
 
-extern "C" void invokeConstructors();
+extern "C"
+{
+	void invokeConstructors();
+	void __cxa_pure_virtual();
+	int __cxa_atexit(void (*f)(void *), void *objptr, void *dso);
+
+	void *__dso_handle;
+}
 
 void *operator new(long unsigned int sz);
 void *operator new(long unsigned int sz, unsigned int placement);

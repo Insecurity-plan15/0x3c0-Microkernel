@@ -2,7 +2,7 @@ This is mostly a file to stop GitHub from pestering me.
 
 My operating system doesn't really have a purpose. IPC is still only basic, some system calls are still stubbed, and the only program it loads is a bootstrap. But it's my operating system, and I like how it's turning out - as a learning experience, and a way for me to learn about the internals of a computer.
 
-To compile my operating system, you'll need G++ 4.3.0 - other versions may work, but I haven't tested them.
+To compile my operating system, you'll need G++ 4.5.0 - 4.3.0 may work, but I haven't tested later uploads.
 
 My operating system doesn't actually do anything visible for the moment, so it shouldn't do anything to your hard drive. Nevertheless, use at your own risk.
 

@@ -55,7 +55,7 @@ __attribute__((aligned(0x1000))) void Thread::ring3Start(StackStates::x86Stack *
 		push %2;			\
 		push %3;			\
 		push %5;			\
-		iretq" : : "g"(state->DS), "g"(state->RSP), "g"(state->EFLAGS), "g"(state->CS), "g"(&Thread::returnMethod),
+		iretq" : : "g"(state->DS), "g"(state->RSP), "g"(state->RFLAGS), "g"(state->CS), "g"(&Thread::returnMethod),
 								"g"(state->EntryPoint), "g"(state->RBP),
 								"g"(state->RDI), "g"(state->RSI),
 								"g"(state->RBX));
@@ -79,12 +79,12 @@ __attribute__((aligned(0x1000))) Thread::Thread(virtAddress start, Process *p, b
 	state->CS = 0x18 | 3;	//0x18 points to the user code segment, ORed with the privilege level
 	state->DS = 0x20 | 3;	//User data segment, OR privilege level
 	state->RSP = state->RBP = state->RIP = 0;
-	asm volatile ("pushf; pop %0" : "=r"(state->EFLAGS));
+	asm volatile ("pushf; pop %0" : "=r"(state->RFLAGS));
 
 	//Set the Interrupt Enabled bit in EFLAGS, just as STI does
-	state->EFLAGS |= 0x200;
+	state->RFLAGS |= 0x200;
 	//Now set the IO privilege level to zero, to prevent any ring3 threads from accessing the IO ports
-	state->EFLAGS &= ~0x3000;
+	state->RFLAGS &= ~0x3000;
 
 	customState = false;
 	sleeping = true;
@@ -132,7 +132,6 @@ void Thread::Start(void **args, unsigned int argCount)
 		state->RIP = userModeActive ? state->EntryPoint : (virtAddress)&Thread::ring3Start;
 
 		state->RSP = state->RBP = userModeActive ? (virtAddress)(stackState + 2) : (virtAddress)stackState;
-		state->UserESP = state->RSP;
 	}
 	else
         //Not the best solution, but I don't know how to invoke an overloaded delete[] operator

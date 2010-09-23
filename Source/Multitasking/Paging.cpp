@@ -231,7 +231,7 @@ physAddress Virtual::RetrieveMapping(virtAddress mem, uint64 *flags)
 * source is a valid virtual address. destination is not, and so will require a mapping to the underlying physical address to be created
 * in the current virtual address space
 */
-void Virtual::CopyToAddressSpace(virtAddress source, unsigned int length, unsigned int destination, x86::PageDirectory addressSpace,
+void Virtual::CopyToAddressSpace(virtAddress source, unsigned int length, virtAddress destination, x86::PageDirectory addressSpace,
 	bool addressMustExist, bool userMode)
 {
 	//Page directory index of the destination page

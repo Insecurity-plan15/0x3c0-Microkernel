@@ -39,11 +39,11 @@ namespace MemoryManagement
 
 		struct MemoryUsageDetails
 		{
-			long long MemoryAllocated;
-			long long MemoryInUse;
-			long long Warnings;
-			long long Errors;
-			long long PossibleOverruns;
+			uint64 MemoryAllocated;
+			uint64 MemoryInUse;
+			uint64 Warnings;
+			uint64 Errors;
+			uint64 PossibleOverruns;
 		};
 	}
 
@@ -60,11 +60,11 @@ namespace MemoryManagement
 		HeapDataStructures::liballoc_major *l_bestBet;
 		int l_pageSize;
 		unsigned int l_pageCount;
-		long long l_allocated;
-		long long l_inuse;
-		long long l_warningCount;
-		long long l_errorCount;
-		long long l_possibleOverruns;
+		uint64 l_allocated;
+		uint64 l_inuse;
+		uint64 l_warningCount;
+		uint64 l_errorCount;
+		uint64 l_possibleOverruns;
 
 		static Heap *kernelHeap;
 		unsigned int mappingFlags;
@@ -89,7 +89,7 @@ namespace MemoryManagement
 		void *CleanAllocate(size_t nobj, size_t size);
 		void *Reallocate(void *p, size_t size);
 		void Free(void *ptr);
-		long long GetAllocatedMemory();
+		uint64 GetAllocatedMemory();
 
 		MemoryManagement::x86::PageDirectory GetPageDirectory();
 

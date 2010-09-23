@@ -156,12 +156,11 @@ void Scheduler::YieldTo(Process *p, StackStates::Interrupt *stack)
 
 		currentThread->state->RSP = stack->RSP;
 		currentThread->state->RBP = stack->RBP;
-		currentThread->state->UserESP = stack->UserESP;
 
 		currentThread->state->RDI = stack->RDI;
 		currentThread->state->RSI = stack->RSI;
 
-		currentThread->state->EFLAGS = stack->EFLAGS;
+		currentThread->state->RFLAGS = stack->RFLAGS;
 
 		currentThread->state->RIP = stack->RIP;
 	}
@@ -195,12 +194,11 @@ void Scheduler::YieldTo(Process *p, StackStates::Interrupt *stack)
 
 		stack->RSP = currentThread->state->RSP;
 		stack->RBP = currentThread->state->RBP;
-		stack->UserESP = currentThread->state->UserESP;
 
 		stack->RDI = currentThread->state->RDI;
 		stack->RSI = currentThread->state->RSI;
 
-		stack->EFLAGS = currentThread->state->EFLAGS;
+		stack->RFLAGS = currentThread->state->RFLAGS;
 
 		stack->RIP = currentThread->state->RIP;
 	}

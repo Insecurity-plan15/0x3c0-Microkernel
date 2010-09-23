@@ -3,8 +3,9 @@
 
 #include <Typedefs.h>
 
-#define PageMask	0xFFFFF000
-#define PageSize	0x1000
+#define PageMask				0xFFFFF000
+#define PageSize				0x1000
+#define KernelVirtualAddress	0xFFFF800000000000
 
 #define PageDirectoryLocation	0xFFFFF000
 #define PageTableLocation		0xFFC00000
@@ -55,7 +56,7 @@ namespace MemoryManagement
 
 		//This method will copy [length] bytes from [source] in this addreses space to [destination] in the [addressSpace] address space
 		//It's used by message passing and when creating a new process from a memory range
-		static void CopyToAddressSpace(virtAddress source, unsigned int length, unsigned int destination, x86::PageDirectory addressSpace,
+		static void CopyToAddressSpace(virtAddress source, unsigned int length, virtAddress destination, x86::PageDirectory addressSpace,
 			bool addressMustExist = true, bool userMode = true);
 	};
 }

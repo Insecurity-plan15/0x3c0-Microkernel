@@ -9,59 +9,6 @@ extern "C"
 {
 	void SetIDT(x86::DescriptorTablePointer *);
 	void SetTSS(unsigned int);
-
-	void ISR0();
-	void ISR1();
-	void ISR2();
-	void ISR3();
-	void ISR4();
-	void ISR5();
-	void ISR6();
-	void ISR7();
-	void ISR8();
-	void ISR9();
-	void ISR10();
-	void ISR11();
-	void ISR12();
-	void ISR13();
-	void ISR14();
-	void ISR15();
-	void ISR16();
-	void ISR17();
-	void ISR18();
-	void ISR19();
-	void ISR20();
-	void ISR21();
-	void ISR22();
-	void ISR23();
-	void ISR24();
-	void ISR25();
-	void ISR26();
-	void ISR27();
-	void ISR28();
-	void ISR29();
-	void ISR30();
-	void ISR31();
-
-	void IRQ0();
-	void IRQ1();
-	void IRQ2();
-	void IRQ3();
-	void IRQ4();
-	void IRQ5();
-	void IRQ6();
-	void IRQ7();
-	void IRQ8();
-	void IRQ9();
-	void IRQ10();
-	void IRQ11();
-	void IRQ12();
-	void IRQ13();
-	void IRQ14();
-	void IRQ15();
-
-	void ISR48();
-	void ISR64();
 }
 
 //This is the initial value, described below
@@ -91,6 +38,8 @@ void DescriptorTables::installGDT()
 
 void DescriptorTables::installIDT()
 {
+	extern virtAddress interruptHandlers[];
+
 	idtPointer.Limit = sizeof(idt) - 1;
 	idtPointer.Base = (cpuRegister)&idt;
 
@@ -100,81 +49,30 @@ void DescriptorTables::installIDT()
 	Ports::WriteByte(0xA0, 0x11);	//Intialise secondary
 	Ports::WriteByte(0x21, 0x20);	//Primary handles interrupt 32-39
 	Ports::WriteByte(0xA1, 0x28);	//Secondary handles interrupt 40-47
-	Ports::WriteByte(0x21, 0x04);
-	Ports::WriteByte(0xA1, 0x02);
-	Ports::WriteByte(0x21, 0x01);
-	Ports::WriteByte(0xA1, 0x01);
+	Ports::WriteByte(0x21, 0x04);	//Master is connected to slave via IRQ line 4
+	Ports::WriteByte(0xA1, 0x02);	//Slave is connected to master via IRQ line 2
+	Ports::WriteByte(0x21, 0x01);	//x86 mode, primary
+	Ports::WriteByte(0xA1, 0x01);	//x86 mode, secondary
 	Ports::WriteByte(0x21, 0x0);	//Mask, allowing everything
 	Ports::WriteByte(0xA1, 0x0);	//Mask, allowing everything
 
-	ISREntry(0);
-	ISREntry(1);
-	ISREntry(2);
-	ISREntry(3);
-	ISREntry(4);
-	ISREntry(5);
-	ISREntry(6);
-	ISREntry(7);
-	ISREntry(8);
-	ISREntry(9);
-	ISREntry(10);
-	ISREntry(11);
-	ISREntry(12);
-	ISREntry(13);
-	ISREntry(14);
-	ISREntry(15);
-	ISREntry(16);
-	ISREntry(17);
-	ISREntry(18);
-	ISREntry(19);
-	ISREntry(20);
-	ISREntry(21);
-	ISREntry(22);
-	ISREntry(23);
-	ISREntry(24);
-	ISREntry(25);
-	ISREntry(26);
-	ISREntry(27);
-	ISREntry(28);
-	ISREntry(29);
-	ISREntry(30);
-	ISREntry(31);
-
-	//Links to assembly code, covering the system call interfaces
-	ISREntry(48);
-	ISREntry(64);
-
-	IRQEntry(0);
-	IRQEntry(1);
-	IRQEntry(2);
-	IRQEntry(3);
-	IRQEntry(4);
-	IRQEntry(5);
-	IRQEntry(6);
-	IRQEntry(7);
-	IRQEntry(8);
-	IRQEntry(9);
-	IRQEntry(10);
-	IRQEntry(11);
-	IRQEntry(12);
-	IRQEntry(13);
-	IRQEntry(14);
-	IRQEntry(15);
-
-	asm volatile ("lidt %0" : "=m"(idtPointer));
+	//I store the list of interrupt handlers in a large array. This saves having to type out a load of method names
+	for(uint32 i = 0; i < 256; i++)
+		setIDTGate(i, interruptHandlers[i], 0x8, 0x8E);
+	asm volatile ("lidt %0" : : "m"(idtPointer));
 }
 
 //By this point, I expect physical and virtual memory management to be set up. Heap allocations are therefore no problem
-void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0, bool installTSS)
+void DescriptorTables::installTSS(uint16 cpuID, cpuRegister esp0, bool installTSS)
 {
 	//This formula is simply the inverse of the one set in installGDT, adjusted to show the highest index, not the number of entries
-	unsigned int highestIndex = ((gdtPointer.Limit + 1) / sizeof(x86::GDTEntry)) - 1;
+	uint64 highestIndex = ((gdtPointer.Limit + 1) / sizeof(x86::GDTEntry)) - 1;
 	//tss will need to be allocated dynamically
-	x86::TaskStateSegment *tss = new x86::TaskStateSegment();
-	virtAddress base = (virtAddress)tss;
-	unsigned int limit = base + sizeof(x86::TaskStateSegment);
+	x86::TaskStateSegment *newTSS = new x86::TaskStateSegment();
+	virtAddress base = (virtAddress)newTSS;
+	uint64 limit = base + sizeof(x86::TaskStateSegment);
+	uint16 tssIndex = cpuID + 5;
 	//I add five because I need to know how many elements there are in the GDT, not just TSSes
-	unsigned int tssIndex = cpuID + 5;
 
     if(installTSS)
         tssIndex = highestIndex + 1;
@@ -202,7 +100,7 @@ void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0, bool in
 		}
 		gdtPointer.Base = (cpuRegister)gdt;
 		//I add one because I need the total number of elements, not the upper bound of the array
-		gdtPointer.Limit = (tssIndex + 1) * sizeof(x86::GDTEntry) - 1;
+		gdtPointer.Limit = (tssIndex + 1) * sizeof(x86::GDTEntry) - 1UL;
 
 		//I really don't like this line, for two reasons
 		//1. GCC lectures me about passing a type which isn't equivalent to a pointer as a parameter. I have to point and dereference the
@@ -222,20 +120,15 @@ void DescriptorTables::installTSS(unsigned int cpuID, unsigned int esp0, bool in
 	gdt[tssIndex].Granularity = (limit >> 16) & 0xF;
 	gdt[tssIndex].BaseHigh = (base >> 24) & 0xFF;
 
-	//0x10 is the third GDT entry - the kernel-mode data segment
-	tss->SS0 = 0x10;
 	//ESP0 is the stack the kernel should jump to when it comes out of kernel mode. It gets set up by the scheduler
-	tss->ESP0 = esp0;
+	newTSS->RSP0 = esp0;
 
-	//The code segment offset of kernel-mode code, ORed with the privilege level (3)
-	tss->CS = 0x8 | 0x3;
-	tss->SS = tss->DS = tss->ES = tss->FS = tss->GS = 0x10 | 0x3;	//Kernel-mode data OR the privilege level
 	//The IO permission bitmap isn't there, so tell the CPU to ignore it
-	tss->IOPermissionBitmapOffset = sizeof(x86::TaskStateSegment);
+	newTSS->IOPermissionBitmapOffset = sizeof(x86::TaskStateSegment);
 	SetTSS((tssIndex * sizeof(x86::GDTEntry)) | 0x3);
 }
 
-void DescriptorTables::setIDTGate(unsigned char i, virtAddress function, unsigned short selector, unsigned char flags)
+void DescriptorTables::setIDTGate(uint32 i, virtAddress function, unsigned short selector, unsigned char flags)
 {
 	idt[i].FunctionLow = function & 0xFFFF;
 	idt[i].FunctionMiddle = (function >> 16) & 0xFFFF;
@@ -248,11 +141,11 @@ void DescriptorTables::setIDTGate(unsigned char i, virtAddress function, unsigne
 
 void DescriptorTables::Install()
 {
+	installGDT();
 	installIDT();
-	asm volatile ("xchg %bx, %bx");
 }
 
-void DescriptorTables::InstallTSS(virtAddress esp0, unsigned int cpuID)
+void DescriptorTables::InstallTSS(virtAddress esp0, uint16 cpuID)
 {
 	installTSS(cpuID, esp0);
 }

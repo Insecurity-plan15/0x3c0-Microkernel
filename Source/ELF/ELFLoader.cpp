@@ -8,8 +8,9 @@
 using namespace ELF;
 using namespace ELF::FileStructures;
 
-ELFLoader::ELFLoader(virtAddress base, unsigned int sz)
+ELFLoader::ELFLoader(virtAddress bse, unsigned int sz)
 {
+	base = bse;
 	elfEnd = (virtAddress)(base + sz);
 	valid = true;
 	header = (ELFHeader *)base;
@@ -76,7 +77,7 @@ void ELFLoader::Start(void *parameter)
 			case 1:
 			{
 				//Map the pages to memory
-				for(virtAddress i = address; i <= endAddress; i += PageSize)
+				for(virtAddress j = address; j <= endAddress; j += PageSize)
 				{
 					physAddress pg = MemoryManagement::Physical::PageAllocator::AllocatePage(false);
 					uint64 currentMapping[2];
@@ -86,12 +87,12 @@ void ELFLoader::Start(void *parameter)
 					//If bit 1 is set, then the memory is not program code and should be mapped as read-write
 //					if((sh->Flags & 0x1) == 0x1)
 						flags |= MemoryManagement::x86::PageDirectoryFlags::ReadWrite;
-					currentMapping[0] = MemoryManagement::Virtual::RetrieveMapping(i, &currentMapping[1]);
+					currentMapping[0] = MemoryManagement::Virtual::RetrieveMapping(j, &currentMapping[1]);
 					//If a mapping is already in place, roll back
 					if(pg == 0 || ((currentMapping[1] & MemoryManagement::x86::PageDirectoryFlags::Present) != 0))
 						//Replace break with roll back
 						break;
-					MemoryManagement::Virtual::MapMemory((physAddress)pg, i, flags);
+					MemoryManagement::Virtual::MapMemory((physAddress)pg, j, flags);
 				}
 				//Copy the data over from the position within the file to the correct place in memory
 				Memory::Copy((void *)address, (void *)((virtAddress)header + offset), sh->Size);
@@ -101,7 +102,7 @@ void ELFLoader::Start(void *parameter)
 			case 8:
 			{
 				//Map the pages to memory
-				for(virtAddress i = address; i <= endAddress; i += PageSize)
+				for(virtAddress j = address; j <= endAddress; j += PageSize)
 				{
 					physAddress pg = MemoryManagement::Physical::PageAllocator::AllocatePage(false);
 					uint64 currentMapping[2];
@@ -110,12 +111,12 @@ void ELFLoader::Start(void *parameter)
 
 					if((sh->Flags & 0x1) == 0x1)
 						flags |= MemoryManagement::x86::PageDirectoryFlags::ReadWrite;
-					currentMapping[0] = MemoryManagement::Virtual::RetrieveMapping(i, &currentMapping[1]);
+					currentMapping[0] = MemoryManagement::Virtual::RetrieveMapping(j, &currentMapping[1]);
 					//If a mapping is already in place, roll back
 					if(pg == 0 || ((currentMapping[1] & MemoryManagement::x86::PageDirectoryFlags::Present) != 0))
 						//Replace break with roll back
 						break;
-					MemoryManagement::Virtual::MapMemory((physAddress)pg, i, flags);
+					MemoryManagement::Virtual::MapMemory((physAddress)pg, j, flags);
 				}
 				//Clear the new memory, ready for variables
 				Memory::Clear((void *)address, sh->Size);
